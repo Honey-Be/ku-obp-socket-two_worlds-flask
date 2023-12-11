@@ -34,7 +34,7 @@ class PlayerMetadataSet:
             for index, (email,icon) in enumerate(zip(filtered_emails,icons)):
                 result_emails.add(email)
                 result_icons.add(icon)
-                result_metadata.add(PlayerMetadataType(enterNum=index, email=email,icon=icon))
+                result_metadata.add(PlayerMetadataType(index,email,icon))
 
             self._emails: OrderedSet[str] = result_emails
             self._icons: OrderedSet[PlayerIconType] = result_icons
