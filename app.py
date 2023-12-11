@@ -53,6 +53,10 @@ io = flask_socketio.SocketIO(
     ],
 )
 
+
+io.init_app(app)
+
+
 def tryCreate():
     try:
         content = flask.request.get_json()
@@ -128,4 +132,4 @@ def connect(sid, environ):
 
 
 if __name__ == "__main__":
-    io.run(app, port=11000, use_reloader=True, log_output=True)
+    io.run(app, host="0.0.0.0", port=11000, use_reloader=True, log_output=True)
