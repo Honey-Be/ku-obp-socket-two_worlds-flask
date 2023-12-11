@@ -1,6 +1,9 @@
 FROM python:3.12.1-bookworm
 
-EXPOSE 80
+EXPOSE 80 443 22
+EXPOSE 5000
+EXPOSE 7000-8000
+EXPOSE 8080
 EXPOSE 11000
 
 ADD requirements.txt requirements.txt

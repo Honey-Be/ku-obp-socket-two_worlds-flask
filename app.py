@@ -55,7 +55,8 @@ io = flask_socketio.SocketIO(
 
 main = flask.Blueprint('main', __name__)
 
-
+io.init_app(app)
+app.register_blueprint(main)
 
 
 def tryCreate():
@@ -125,7 +126,10 @@ def joinRoom(json):
 
 
 
-app.register_blueprint(main)
+
+
+
+
 
 @io.on("connect")
 def connect(sid, environ):
@@ -133,8 +137,6 @@ def connect(sid, environ):
     io.on_event("joinRoom",joinRoom)    
 
 
-
-io.init_app(app)
 
 if __name__ == "__main__":
     io.run(app, port=11000, use_reloader=True, log_output=True,allow_unsafe_werkzeug=True)
