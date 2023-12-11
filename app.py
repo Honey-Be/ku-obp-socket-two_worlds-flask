@@ -56,6 +56,9 @@ io = flask_socketio.SocketIO(
 
 io.init_app(app)
 
+main = flask.Blueprint('main', __name__)
+
+
 
 def tryCreate():
     try:
@@ -80,13 +83,12 @@ def tryCreate():
 
 
 
-@app.route('/')
-def hello_world():
-    return "Hello, World!"
+@main.route("/")
+def index():
+    return "<div>Hello, World!</div>"
 
 
-
-@app.route('/create', methods=["POST"])
+@main.route('/create', methods=["POST"])
 def create():
     try:
         tryCreate()
