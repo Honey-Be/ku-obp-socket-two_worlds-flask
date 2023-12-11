@@ -14,4 +14,4 @@ ADD . /app
 WORKDIR /app
 
 
-ENTRYPOINT [ "flask run --host=0.0.0.0" ]
+ENTRYPOINT [ "flask", "run", "--host=0.0.0.0" ]
