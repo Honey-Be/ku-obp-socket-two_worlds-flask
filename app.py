@@ -78,7 +78,7 @@ def tryCreate():
 
 @app.route('/')
 def hello_world():
-    return "Hello, World!"
+    return flask.Response("Hello, World",200)
 
 
 
