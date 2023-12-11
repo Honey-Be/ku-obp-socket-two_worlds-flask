@@ -45,7 +45,7 @@ flask_cors.CORS(app,origins=[
     ])
 
 
-io = flask_socketio.SocketIO(
+io = flask_socketio.SocketIO(app,
     cors_allowed_origins=[
         "https://ku-obp.vercel.app",
         "https://ku-obp-gamma.vercel.app",
@@ -54,9 +54,6 @@ io = flask_socketio.SocketIO(
 )
 
 main = flask.Blueprint('main', __name__)
-
-io.init_app(app)
-app.register_blueprint(main)
 
 
 def tryCreate():
@@ -138,5 +135,13 @@ def connect(sid, environ):
 
 
 
+
+
+
+
+app.register_blueprint(main)
+
+
+
 if __name__ == "__main__":
-    io.run(app, host="0.0.0.0", port=11000, use_reloader=True, log_output=True,allow_unsafe_werkzeug=True)
+    io.run(app)
