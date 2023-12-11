@@ -10,7 +10,3 @@ services:
     FLASK_APP: app.py
   ports:
     - "8080:5000"
-  entrypoint:
-    - flask
-    - run
-    - --host=0.0.0.0
