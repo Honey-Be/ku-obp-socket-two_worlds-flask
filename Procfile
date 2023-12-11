@@ -1,1 +1,1 @@
-web: gunicorn -w 1 --threads 100 module:app
+web: flask run --host=0.0.0.0
