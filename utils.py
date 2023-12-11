@@ -9,7 +9,7 @@ from ordered_set import OrderedSet
 
 from random import shuffle
 
-from .primitives import *
+from primitives import *
 
 from flask_socketio import SocketIO,emit
 
@@ -18,7 +18,6 @@ import copy
 SLICE_ALL = slice(None)
 
 
-from .manager import updateGameState
 
 class PlayerMetadataSet:
     def __init__(self, orig: Optional[Self] = None, *emails: str, shuffles: bool = False):
@@ -241,6 +240,21 @@ class GameCache:
         return output
 
 
+    
+    def updateGameState(self, io: SocketIO, refresh: bool = False, isPlayable: bool | None = None) -> None:
+        state: GameStateType = self.gameState
+        serialized = serializeGameState(state)
+        if refresh:
+            if isPlayable is None or not isPlayable:
+                payload = { "refresh": "true" , "gameState": serialized, "nowInTurnEmail": self.nowInTurnEmail, "isPlayable": "false"}
+            else:
+                payload = { "refresh": "true" , "gameState": serialized, "nowInTurnEmail": self.nowInTurnEmail, "isPlayable": "true"}
+        else:
+            payload = { "refresh": "false" , "gameState": serialized, "nowInTurnEmail": self.nowInTurnEmail}
+        io.emit("updateGameState",payload,to=self.roomId,include_self=True)
+        with Client("room.sqlite") as db:
+            db.set(f"{self.roomId}",self)
+
     def commitState(self, state: GameStateType, io: SocketIO):
         self.player_states = copy.deepcopy(state.players)
         self.properties = copy.deepcopy(state.properties)
@@ -251,7 +265,7 @@ class GameCache:
         self.doublesCount = state.doublesCount
 
         copied = GameStateType(copy.deepcopy(self._roomId),copy.deepcopy(self.player_states),copy.deepcopy(self.properties),self.nowInTurn,self.govIncome,self.charityIncome, self.diceCache, self.doublesCount)
-        updateGameState(self,io,False)
+        self.updateGameState(io,False)
 
     @classmethod
     def load(cls, roomId: str) -> Self | None:

@@ -8,7 +8,7 @@ from random import shuffle
 
 import copy
 from typing import Any, Callable
-from .cells import CELLS
+from cells import CELLS
 
 from utils import *
 
@@ -132,20 +132,3 @@ def warp(state: GameStateType, player_icon: PlayerIconType, dest: int, callback:
 def createRoom(roomId: str, cache: GameCache) -> None:
     with Client("room.sqlite") as db:
         db.set(f"{roomId}", cache)
-
-
-
-
-def updateGameState(cache: GameCache, io: flask_socketio.SocketIO, refresh: bool = False, isPlayable: bool | None = None) -> None:
-    state: GameStateType = cache.gameState
-    serialized = serializeGameState(state)
-    if refresh:
-        if isPlayable is None or not isPlayable:
-            payload = { "refresh": "true" , "gameState": serialized, "nowInTurnEmail": cache.nowInTurnEmail, "isPlayable": "false"}
-        else:
-            payload = { "refresh": "true" , "gameState": serialized, "nowInTurnEmail": cache.nowInTurnEmail, "isPlayable": "true"}
-    else:
-        payload = { "refresh": "false" , "gameState": serialized, "nowInTurnEmail": cache.nowInTurnEmail}
-    io.emit("updateGameState",payload,to=cache.roomId,include_self=True)
-    with Client("room.sqlite") as db:
-        db.set(f"{cache.roomId}",cache)

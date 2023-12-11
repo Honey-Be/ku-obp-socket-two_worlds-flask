@@ -7,11 +7,11 @@ import flask_cors
 
 import json as JSON
 
-from .manager import *
-from .primitives import *
-from .cells import *
-from .chances import *
-from .utils import *
+from manager import *
+from primitives import *
+from cells import *
+from chances import *
+from utils import *
 
 
 class RoomCreationExceptionReason(Enum):
@@ -78,7 +78,7 @@ def tryCreate():
 
 @app.route('/')
 def hello_world():
-    return flask.Response("Hello, World",200)
+    return "Hello, World!"
 
 
 
@@ -128,4 +128,4 @@ def connect(sid, environ):
 
 
 if __name__ == "__main__":
-    io.run(app,host="0.0.0.0",port=11000,use_reloader=True, log_output=True)
+    io.run(app,host="0.0.0.0",use_reloader=True, log_output=True)

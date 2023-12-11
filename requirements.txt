@@ -1,5 +1,6 @@
 flask>=3.0.0
 flask-socketio>=5.0.0
+flask-cors
 kvsqlite
 ordered-set
 gunicorn

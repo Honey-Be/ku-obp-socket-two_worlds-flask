@@ -12,6 +12,8 @@ from random import choice
 
 from chances import CHANCE_CARDS
 
+from collections.abc import Sequence
+
 class CellType(Enum):
     infrastructure = "infrastructure"
     industrial = "industrial"
@@ -32,13 +34,12 @@ class BuildableFlagType(Enum):
     OnlyOne = 1
     Normal = 3
 
-class AbstractCellData(metaclss=ABCMeta):
-    def __new__(cls, maxBuildable: BuildableFlagType):
+class AbstractCellData(metaclass=ABCMeta):
+    def __new__(cls, *args ,**kwds):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = maxBuildable
         return this
     
-    def __init__(self, cell_type: CellType, cell_id: int, name: str, group_factor: int = 0):
+    def __init__(self, cell_type: CellType, cell_id: int, name: str, group_factor: int = 0, **kwargs):
         self._cell_type: CellType = cell_type
         self._cell_id: int = cell_id
         self._name: str = name
@@ -54,8 +55,8 @@ class AbstractCellData(metaclss=ABCMeta):
 
     @property
     @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+    @abstractmethod
+    def maxBuildable(cls) -> BuildableFlagType: pass
 
     @property
     @abstractmethod
@@ -83,16 +84,24 @@ class AbstractCellData(metaclss=ABCMeta):
     def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]: pass
 
 class Infrastructure(AbstractCellData):
-    def __new__(cls):
-        this: Self = super().__new__(cls,BuildableFlagType.NotBuildable)
+    def __new__(cls, *args, **kwds):
+        this = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2G",300000)
         ]
         return this
 
     def __init__(self, kind: str):
-        (_cellId, _name) = CellNameLookups.infrastructure(kind)
-        super().__init__(CellType.infrastructure,_cellId, _name)
+        cell = INFRASTRUCTURES_LOOKUP[kind]
+        super().__init__(CellType.infrastructure,cell.cellId, cell.name)
+
+
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
 
     @property
     @override
@@ -121,8 +130,9 @@ class Infrastructure(AbstractCellData):
         callback(new_state)
         return (new_state, [])
 class Land(AbstractCellData):
-    def __new__(cls, cell_id: int, name: str, group_factor: int):
-        this: Self = super().__new__(cls,BuildableFlagType.Normal)
+    def __new__(cls, *args, **kwds):
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.Normal
         cls._optional_payment_infos: Sequence[AbstractPaymentType] = [
             P2OPayment(300000)
         ]
@@ -131,6 +141,12 @@ class Land(AbstractCellData):
     def __init__(self, cell_id: int, name: str, group_factor: int):
         super().__init__(CellType.land,cell_id,name, group_factor)
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -179,7 +195,8 @@ class Land(AbstractCellData):
 
 class Lotto(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2M",200000)
         ]
@@ -187,6 +204,12 @@ class Lotto(AbstractCellData):
     def __init__(self, cell_id: int = 3):
         super().__init__(CellType.lotto,cell_id,"로또")
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -212,13 +235,20 @@ class Lotto(AbstractCellData):
 
 class Charity(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2C",600000)
         ]
         return this
     def __init__(self, cell_id: int = 52):
         super().__init__(CellType.charity,cell_id,"구제기금")
+    
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
     
     @property
     @override
@@ -248,12 +278,19 @@ class Charity(AbstractCellData):
         callback(new_state)
         return (new_state, [])
 class Chance(AbstractCellData):
-    def __new__(cls, cell_id: int):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+    def __new__(cls, *args, **kwds):
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int):
         super().__init__(CellType.chance,cell_id,"변화카드")
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -282,13 +319,20 @@ class Chance(AbstractCellData):
     
 
 class Trnsportation(AbstractCellData):
-    def __new__(cls, cell_id: int, dest: int):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+    def __new__(cls, *args, **kwds):
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int, dest: int):
         super().__init__(CellType.transportation,cell_id,"대중교통")
         self._dest: int = dest
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -317,7 +361,8 @@ class Trnsportation(AbstractCellData):
 
 class Hospital(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2M",200000)
         ]
@@ -325,6 +370,12 @@ class Hospital(AbstractCellData):
     def __init__(self, cell_id: int = 45):
         super().__init__(CellType.hospital,cell_id,"병원")
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -355,11 +406,18 @@ class Hospital(AbstractCellData):
 
 class Park(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int = 36):
         super().__init__(CellType.park,cell_id,"공원")
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -384,11 +442,18 @@ class Park(AbstractCellData):
 
 class University(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int = 18):
         super().__init__(CellType.university,cell_id,"대학")
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -416,13 +481,20 @@ class University(AbstractCellData):
 
 class Jail(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2G",400000)
         ]
         return this
     def __init__(self, cell_id: int = 9):
         super().__init__(CellType.jail,cell_id,"감옥")
+    
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
     
     @property
     @override
@@ -447,14 +519,22 @@ class Jail(AbstractCellData):
     def hasEffectWhenPassing(self) -> bool:
         return False
 
+
 class Start(AbstractCellData):
     def __new__(cls):
-        this = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._salery_info = UnidirectionalPayment("M2P", 4000000)
         cls._taxes_info = UnidirectionalPayment("P2G", 1000000)
         return this
     def __init__(self):
         super().__init__(CellType.start,0,"출발")
+    
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
     
     @property
     @override
@@ -494,7 +574,8 @@ class Start(AbstractCellData):
 
 class Concert(AbstractCellData):
     def __new__(cls):
-        this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos = [
             UnidirectionalPayment("P2M", 2000000),
             UnidirectionalPayment("P2G", 2000000),
@@ -503,6 +584,12 @@ class Concert(AbstractCellData):
         return this
     def __init__(self, cell_id: int = 27):
         super().__init__(CellType.concert,cell_id,"콘서트 (feat. IU)")
+    
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
     
     @property
     @override
@@ -532,16 +619,23 @@ class Concert(AbstractCellData):
         return False
 
 class Industrial(AbstractCellData):
-    def __new__(cls):
-        this: Self = super().__new__(cls,BuildableFlagType.NotBuildable)
+    def __new__(cls, *args, **kwds):
+        this: Self = super().__new__(cls)
+        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._mandatory_payment_info = UnidirectionalPayment("P2G",600000)
         cls._optional_payment_info = P2DPayment(300000)
         return this
 
     def __init__(self, kind: str):
-        (_cellId, _name) = CellNameLookups.industrial(kind)
-        super().__init__(CellType.infrastructure,_cellId, _name)
+        cell = INDUSTRIALS_LOOKUP[kind]
+        super().__init__(CellType.infrastructure,cell.cellId, cell.name)
 
+    @property
+    @override
+    @classmethod
+    def maxBuildable(cls) -> BuildableFlagType:
+        return cls._maxBuildable
+    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -578,44 +672,25 @@ class Industrial(AbstractCellData):
         return False
 
 @dataclass
-class CellNameLookupItemType(NamedTuple):
-    cellId: int
-    name: str
+class CellNameLookupItemType:
+    def __init__(self, cellId: int, name: str):
+        self.cellId: int = cellId
+        self.name: str = name
 
-class CellNameLookups:
-    def __new__(cls):
-        cls._infrastructures: dict[str, CellNameLookupItemType] = {
-            "water": CellNameLookupItemType(cellId=7, name="수자원"),
-            "electricity": CellNameLookupItemType(cellId=16, name="전력"),
-            "gas": CellNameLookupItemType(cellId=21, name="도시가스"),
+WATER: CellNameLookupItemType = CellNameLookupItemType(7, "수자원")
+
+INFRASTRUCTURES_LOOKUP: dict[str, CellNameLookupItemType] = {
+    "water": WATER,
+    "electricity": CellNameLookupItemType(16, "전력"),
+    "gas": CellNameLookupItemType(21, "도시가스"),
+}
+    
+INDUSTRIALS_LOOKUP: dict[str, CellNameLookupItemType] = {
+            "digital-complex": CellNameLookupItemType(44, "지식정보단지"),
+            "agriculture": CellNameLookupItemType(35, "농공단지"),
+            "factory": CellNameLookupItemType(35, "산업단지")
         }
-        cls._infrastructure_kinds: set[str] = set[str](cls._infrastructures.keys())
-        cls._industrials: dict[str, CellNameLookupItemType] = {
-            "digital-complex": CellNameLookupItemType(cellId=44, name="지식정보단지"),
-            "agriculture": CellNameLookupItemType(cellId=35, name="농공단지"),
-            "factory": CellNameLookupItemType(cellId=35, name="산업단지")
-        }
-        cls._industrial_kinds: set[str] = set[str](cls._industrials.keys())
     
-    @classmethod
-    def infrastructure(cls, kind: str) -> tuple[int, str]:
-        tmp = cls._infrastructures[kind]
-        return (tmp.cellId, tmp.name)
-    
-    @classmethod
-    def industrial(cls, kind: str) -> tuple[int, str]:
-        tmp = cls._industrials[kind]
-        return (tmp.cellId, tmp.name)
-    
-    @property
-    @classmethod
-    def infrastructure_kinds(cls) -> set[str]:
-        return cls._infrastructure_kinds
-    
-    @property
-    @classmethod
-    def industrial_kinds(cls) -> set[str]:
-        return cls._industrial_kinds
     
 _TRANSPORTATIONS: list[Trnsportation] = list(map(lambda n: Trnsportation((n * 9 + 1), (((n+1)%6) * 9 + 1)),range(0,6)))
 TRANSPORTATIONS: dict[int, Trnsportation] = {
@@ -642,7 +717,7 @@ _LANDS = list[tuple[int, Land]](map(
         lambda acc, curr: list[Land](acc + curr),
         list[list[Land]](map(
             lambda item: list[Land](map(
-                lambda inner: Land(cell_id=inner[0],name=inner[1],group_factor=item[0] + 1),
+                lambda inner: Land(inner[0],inner[1],item[0] + 1),
                 item[1]
             )),
             enumerate(LAND_DATA)
@@ -660,11 +735,11 @@ CHANCES = {
 }
 
 INFRASTRUCTURES_MAP = {
-    infra.cellId: infra for infra in map(Infrastructure,CellNameLookups.infrastructure_kinds)
+    cell.cellId: Infrastructure(kind) for (kind, cell) in INFRASTRUCTURES_LOOKUP.items()
 }
 
 INDUSTRIALS_MAP = {
-    industrial.cellId: industrial for industrial in map(Industrial,CellNameLookups.industrial_kinds)
+    industrial.cellId: industrial for industrial in map(Industrial,INDUSTRIALS_LOOKUP.keys())
 }
 
 
@@ -682,10 +757,12 @@ OTHERS: dict[int,AbstractCellData] = {
 
 from utils import CellDictMerger
 
+def gen_cells():
+    items = list(CellDictMerger().merge(LANDS).merge(TRANSPORTATIONS).merge(CHANCES).merge(INFRASTRUCTURES_MAP).merge(INDUSTRIALS_MAP).merge(OTHERS).extract().items())
+    items.sort(key=lambda t: t[0])
+    return dict(items)
 
-CELLS = CellDictMerger().merge(LANDS).merge(TRANSPORTATIONS).merge(CHANCES).merge(INFRASTRUCTURES_MAP).merge(INDUSTRIALS_MAP).merge(OTHERS).extract()
-
-assert set(range(54)) == CELLS.keys()
+CELLS = gen_cells()
 
 def _getGroupCellIds(cellId: int) -> set[int]:
         group_factor = CELLS[cellId].group_factor
