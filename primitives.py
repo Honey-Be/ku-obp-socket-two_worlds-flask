@@ -22,10 +22,15 @@ class UniversityStateType(Enum):
     graduated = "graduated"
 
 @dataclass
-class TicketsType(NamedTuple):
-    discountRent: int
-    bonus: bool
-    doubleLotto: int
+class TicketsType:
+    def __init__(self,
+        discountRent: int,
+        bonus: bool,
+        doubleLotto: int
+    ):
+        self.discountRent: int = discountRent
+        self.bonus: bool = bonus
+        self.doubleLotto: int = doubleLotto
 
 class PlayerIconType(Enum):
     first = 0
@@ -90,43 +95,61 @@ DOUBLE_DICES: set[DiceType] = {
 }
 
 @dataclass
-class PlayerMetadataType(NamedTuple):
-    enterNum: int
-    email: str
-    icon: PlayerIconType
+class PlayerMetadataType:
+    def __init__(self,
+        enterNum: int,
+        email: str,
+        icon: PlayerIconType
+    ):
+        self.enterNum: int = enterNum
+        self.email: str = email
+        self.icon: PlayerIconType = icon
 
 
 @dataclass
-class PlayerType(NamedTuple):
-    icon: PlayerIconType
-    location: int
-    displayLocation: int
-    cash: int
-    cycles: int
-    university: UniversityStateType
-    tickets: TicketsType
-    remainingJailTurns: int
+class PlayerType:
+    def __init__(self,
+        icon: PlayerIconType,
+        location: int,
+        displayLocation: int,
+        cash: int,
+        cycles: int,
+        university: UniversityStateType,
+        tickets: TicketsType,
+        remainingJailTurns: int
+    ):
+        self.icon: PlayerIconType = icon
+        self.location: int = location
+        self.displayLocation: int = displayLocation
+        self.cash: int = cash
+        self.cycles: int = cycles
+        self.university: UniversityStateType = university
+        self.tickets: TicketsType = tickets
+        self.remainingJailTurns: int = remainingJailTurns
 
 @dataclass
-class PropertyType(NamedTuple):
-    ownerIcon: PlayerIconType
-    count: int
+class PropertyType:
+    def __init__(self, ownerIcon: PlayerIconType, count: int):
+        self.ownerIcon: PlayerIconType = ownerIcon
+        self.count: int = count
+@dataclass
+class SidecarType:
+    def __init__(self, limitRents: int):
+        self.limitRents: int = limitRents
+@dataclass
+class GameStateType:
+    def __init__(self, roomId: str, players: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType,doublesCount: int):
+        self.roomId: str = roomId
+        self.players: list[PlayerType] = copy.deepcopy(players)
+        self.properties: dict[int,PropertyType] = copy.deepcopy(properties)
+        self.nowInTurn: PlayerIconType = nowInTurn
+        self.govIncome: int = govIncome
+        self.charityIncome: int = charityIncome
+        self.diceCache: DiceType = diceCache
+        self.doublesCount: int = doublesCount
+
 
 @dataclass
-class SidecarType(NamedTuple):
-    limitRents: int
-
-@dataclass
-class GameStateType(NamedTuple):
-    roomId: str
-    players: list[PlayerType]
-    properties: dict[int,PropertyType]
-    nowInTurn: PlayerIconType
-    govIncome: int
-    charityIncome: int
-    diceCache: DiceType
-    doublesCount: int
-
 class PaymentTransaction:
     def __init__(self,
         first: int,
