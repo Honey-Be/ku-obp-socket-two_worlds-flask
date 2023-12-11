@@ -272,7 +272,8 @@ P2OPaymentKind = Literal["P2O"]
 P2DPaymentKind = Literal["P2D"]
 MarketGovPaymentKind = Literal["G2M", "M2G"]
 
-class AbstractPaymentType[PK: UnidirectionalPaymentKind | P2PPaymentKind | P2OPaymentKind | MarketGovPaymentKind | P2DPaymentKind](metaclass=ABCMeta):
+PK = TypeVar("PK", UnidirectionalPaymentKind, P2PPaymentKind, P2OPaymentKind, MarketGovPaymentKind, P2DPaymentKind)
+class AbstractPaymentType(Generic[PK], metaclass=ABCMeta):
     def __init__(self, kind: PK, cost: int):
         self._kind: PK = kind
         self._cost: int = cost
@@ -306,9 +307,10 @@ class MarketGovPayment(AbstractPaymentType[MarketGovPaymentKind]):
         super().__init__(kind, cost)
 
 
-class AbstractTransactor[PK: UnidirectionalPaymentKind | P2PPaymentKind | P2OPaymentKind | MarketGovPaymentKind | P2DPaymentKind](metaclass=ABCMeta):
+P = TypeVar("P", UnidirectionalPaymentKind, P2PPaymentKind, P2OPaymentKind, MarketGovPaymentKind, P2DPaymentKind)
+class AbstractTransactor(Generic[P], metaclass=ABCMeta):
     @abstractmethod
-    def transact(self, payment: AbstractPaymentType[PK]) -> PaymentTransaction: pass
+    def transact(self, payment: AbstractPaymentType[P]) -> PaymentTransaction: pass
 
 class UnidirectionalTransactor(AbstractTransactor[UnidirectionalPaymentKind]):
     def __init__(self, my_icon: PlayerIconType):
