@@ -25,7 +25,7 @@ class PlayerMetadataSet:
         if orig == None:
             result_emails: OrderedSet[str] = OrderedSet[str]([])
             result_icons: OrderedSet[PlayerIconType] = OrderedSet[PlayerIconType]([])
-            result_metadata: OrderedSet[PlayerMetadataType] = OrderedSet[PlayerMetadataType]([])
+            result_metadata: list[PlayerMetadataType] = list([])
             filtered_emails = OrderedSet[str](emails).items[0:4]
             icons: list[PlayerIconType] = [PlayerIconType.first,PlayerIconType.second,PlayerIconType.third,PlayerIconType.fourth][0:len(filtered_emails)]
             if shuffles:
@@ -34,15 +34,15 @@ class PlayerMetadataSet:
             for index, (email,icon) in enumerate(zip(filtered_emails,icons)):
                 result_emails.add(email)
                 result_icons.add(icon)
-                result_metadata.add(PlayerMetadataType(index,email,icon))
+                result_metadata.append(PlayerMetadataType(index,email,icon))
 
             self._emails: OrderedSet[str] = result_emails
             self._icons: OrderedSet[PlayerIconType] = result_icons
-            self._metadata: OrderedSet[PlayerMetadataType] = result_metadata
+            self._metadata: list[PlayerMetadataType] = result_metadata
         else:
             self._emails: OrderedSet[str] = orig._emails.copy()
             self._icons: OrderedSet[PlayerIconType] = orig._icons.copy()
-            self._metadata: OrderedSet[PlayerMetadataType] = orig._metadata.copy()
+            self._metadata: list[PlayerMetadataType] = orig._metadata.copy()
         
     def has_emails(self,email: str):
         return self._emails.__contains__(email)
