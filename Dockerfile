@@ -1,6 +1,6 @@
 FROM python:3.12.1-slim-bookworm
 
-
+EXPOSE 80
 EXPOSE 11000
 
 ADD requirements.txt requirements.txt
