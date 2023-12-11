@@ -32,9 +32,9 @@ caches: dict[str, GameCache] = {}
 
 app = flask.Flask(__name__)
 flask_cors.CORS(app,origins=[
-        "http://localhost:3000",
         "https://ku-obp.vercel.app",
-        "https://ku-obp-gamma.vercel.app"
+        "https://ku-obp-gamma.vercel.app",
+        "http://localhost:3000",
     ],allow_headers=[
         "Content-Type",
         "Authorization",
@@ -47,9 +47,9 @@ flask_cors.CORS(app,origins=[
 
 io = flask_socketio.SocketIO(
     cors_allowed_origins=[
-        "http://localhost:3000",
         "https://ku-obp.vercel.app",
-        "https://ku-obp-gamma.vercel.app"
+        "https://ku-obp-gamma.vercel.app",
+        "http://localhost:3000",
     ],
 )
 
@@ -126,7 +126,6 @@ def joinRoom(json):
 
 
 app.register_blueprint(main)
-io.init_app(app)
 
 @io.on("connect")
 def connect(sid, environ):
@@ -134,5 +133,8 @@ def connect(sid, environ):
     io.on_event("joinRoom",joinRoom)    
 
 
+
+io.init_app(app)
+
 if __name__ == "__main__":
-    io.run(app, host="0.0.0.0", port=11000, use_reloader=True, log_output=True,allow_unsafe_werkzeug=True)
+    io.run(app, port=11000, use_reloader=True, log_output=True,allow_unsafe_werkzeug=True)
