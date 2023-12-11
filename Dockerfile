@@ -11,4 +11,4 @@ ADD . /app
 WORKDIR /app
 
 
-CMD ["uwsgi" "--http" ":5000" "--gevent" "1000" "--http-websockets" "--master" "--wsgi-file" "app.py" "--callable" "app"]
+CMD ["gunicorn", "--worker-class", "eventlet", "-w", "1", "module:app"]
