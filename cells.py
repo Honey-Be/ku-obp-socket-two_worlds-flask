@@ -59,11 +59,11 @@ class AbstractCellData(metaclss=ABCMeta):
 
     @property
     @abstractmethod
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]: pass
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]: pass
     
     @property
     @abstractmethod
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]: pass
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]: pass
 
     @property
     def cellId(self) -> int:
@@ -80,28 +80,28 @@ class AbstractCellData(metaclss=ABCMeta):
     def passing(self, state: GameStateType, player_now_icon: PlayerIconType) -> GameStateType: pass
 
     @abstractmethod
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]: pass
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]: pass
 
 class Infrastructure(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls,BuildableFlagType.NotBuildable)
-        cls._payment_infos: list[AbstractPaymentType] = [
+        cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2G",300000)
         ]
         return this
 
     def __init__(self, kind: str):
-        [_cellId, _name]: tuple[int, str] = CellNameLookups.infrastructure(kind)
+        (_cellId, _name) = CellNameLookups.infrastructure(kind)
         super().__init__(CellType.infrastructure,_cellId, _name)
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Infrastructure._payment_infos
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -114,16 +114,16 @@ class Infrastructure(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged_mandatory.toAppliedState(state)
         callback(new_state)
-        return [new_state, []]
+        return (new_state, [])
 class Land(AbstractCellData):
-    def __new__(cls):
+    def __new__(cls, cell_id: int, name: str, group_factor: int):
         this: Self = super().__new__(cls,BuildableFlagType.Normal)
-        cls._optional_payment_infos: list[AbstractPaymentType] = [
+        cls._optional_payment_infos: Sequence[AbstractPaymentType] = [
             P2OPayment(300000)
         ]
         return this
@@ -133,12 +133,12 @@ class Land(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return [UnidirectionalPayment("P2G",self.group_factor * 100000)]
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Land._optional_payment_infos
     
     @override
@@ -151,7 +151,7 @@ class Land(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         if self.cellId in state.properties.keys():
@@ -169,18 +169,18 @@ class Land(AbstractCellData):
                 new_state = (merged_mandatory + merged_p2o).toAppliedState(state)
             callback(new_state)
             if state.properties[self.cellId].ownerIcon == player_now_icon and state.properties[self.cellId].count < 3:
-                return [new_state, self.optionalPaymentInfos]
+                return (new_state, self.optionalPaymentInfos)
             else:
-                return [new_state, []]
+                return (new_state, [])
         else:
             new_state = merged_mandatory.toAppliedState(state)
             callback(new_state)
-            return [new_state, self.optionalPaymentInfos]
+            return (new_state, self.optionalPaymentInfos)
 
 class Lotto(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
-        cls._payment_infos: list[AbstractPaymentType] = [
+        cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2M",200000)
         ]
         return this
@@ -189,12 +189,12 @@ class Lotto(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Lotto._payment_infos
     
     @override
@@ -207,13 +207,13 @@ class Lotto(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
-        return [state,self.optionalPaymentInfos]
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (state, self.optionalPaymentInfos)
 
 class Charity(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
-        cls._payment_infos: list[AbstractPaymentType] = [
+        cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2C",600000)
         ]
         return this
@@ -222,12 +222,12 @@ class Charity(AbstractCellData):
     
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Charity._payment_infos
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -240,15 +240,15 @@ class Charity(AbstractCellData):
         return False
 
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged_mandatory.toAppliedState(state)
         
         callback(new_state)
-        return [new_state, []]
+        return (new_state, [])
 class Chance(AbstractCellData):
-    def __new__(cls):
+    def __new__(cls, cell_id: int):
         this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
         return this
     def __init__(self, cell_id: int):
@@ -256,11 +256,11 @@ class Chance(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -273,16 +273,16 @@ class Chance(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         picked = choice(CHANCE_CARDS)
-        fmed = set(map(lambda player: player.email, filter(lambda player: (player.icon == player_now_icon),state.players)))
+        fmed = set(map(lambda player: player.icon, filter(lambda player: (player.icon == player_now_icon),state.players)))
         new_state = reduce(lambda acc,curr: picked.action(copy.deepcopy(acc), curr),fmed,state)
         callback(new_state)
-        return new_state
+        return (new_state, [])
     
 
 class Trnsportation(AbstractCellData):
-    def __new__(cls):
+    def __new__(cls, cell_id: int, dest: int):
         this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
         return this
     def __init__(self, cell_id: int, dest: int):
@@ -291,11 +291,11 @@ class Trnsportation(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -312,13 +312,13 @@ class Trnsportation(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         return warp(state,player_now_icon,self.dest,callback,do_arrived=False)
 
 class Hospital(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
-        cls._payment_infos: list[AbstractPaymentType] = [
+        cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2M",200000)
         ]
         return this
@@ -327,12 +327,12 @@ class Hospital(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Hospital._payment_infos
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -340,13 +340,13 @@ class Hospital(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged.toAppliedState(state)
         
         callback(new_state)
-        return [new_state, []]
+        return (new_state, [])
     
     @property
     @override
@@ -362,11 +362,11 @@ class Park(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -374,8 +374,8 @@ class Park(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
-        return [state, []]
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (state, [])
     
     @property
     @override
@@ -391,12 +391,12 @@ class University(AbstractCellData):
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @override
@@ -404,10 +404,10 @@ class University(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         new_state = universityAction(state,player_now_icon)
         callback(new_state)
-        return [new_state, []]
+        return (new_state, [])
     
     @property
     @override
@@ -417,7 +417,7 @@ class University(AbstractCellData):
 class Jail(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls, BuildableFlagType.NotBuildable)
-        cls._payment_infos: list[AbstractPaymentType] = [
+        cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2G",400000)
         ]
         return this
@@ -426,12 +426,12 @@ class Jail(AbstractCellData):
     
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Jail._payment_infos
     
     @override
@@ -439,8 +439,8 @@ class Jail(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
-        return [imprisonment(state,player_now_icon), []]
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (imprisonment(state,player_now_icon), [])
     
     @property
     @override
@@ -458,16 +458,16 @@ class Start(AbstractCellData):
     
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return [Start._salery_info, Start._taxes_info]
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
 
     @staticmethod
-    def _getSalery(state: GameStateType, player_now_icon: PlayerIconType, salary_payments: list[AbstractPaymentType]) -> GameStateType:
+    def _getSalery(state: GameStateType, player_now_icon: PlayerIconType, salary_payments: Sequence[AbstractPaymentType]) -> GameStateType:
         count = min(len(state.players),4)
         if count >= 2 and count <= 4:
             transactor = UnidirectionalTransactor(player_now_icon)
@@ -484,8 +484,8 @@ class Start(AbstractCellData):
         return Start._getSalery(state,player_now_icon,self.mandatoryPaymentInfos)
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
-        return [Start._getSalery(state,player_now_icon,self.mandatoryPaymentInfos), []]
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (Start._getSalery(state,player_now_icon,self.mandatoryPaymentInfos), [])
     
     @property
     @override
@@ -506,12 +506,12 @@ class Concert(AbstractCellData):
     
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return Concert._payment_infos
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return []
 
     @override
@@ -519,11 +519,11 @@ class Concert(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged.toAppliedState(state)
-        return [new_state, []]
+        return (new_state, [])
         
     
     @property
@@ -539,17 +539,17 @@ class Industrial(AbstractCellData):
         return this
 
     def __init__(self, kind: str):
-        [_cellId, _name]: tuple[int, str] = CellNameLookups.industrial(kind)
+        (_cellId, _name) = CellNameLookups.industrial(kind)
         super().__init__(CellType.infrastructure,_cellId, _name)
 
     @property
     @override
-    def mandatoryPaymentInfos(self) -> list[AbstractPaymentType]:
+    def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return [Industrial._mandatory_payment_info]
     
     @property
     @override
-    def optionalPaymentInfos(self) -> list[AbstractPaymentType]:
+    def optionalPaymentInfos(self) -> Sequence[AbstractPaymentType]:
         return [Industrial._optional_payment_info]
 
     @override
@@ -557,7 +557,7 @@ class Industrial(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, list[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         if self.cellId in state.properties.keys():
@@ -565,11 +565,11 @@ class Industrial(AbstractCellData):
             merged_p2d = mergeTransactions(map(p2d_transactor.transact,self.optionalPaymentInfos))
             new_state = (merged_mandatory+merged_p2d).toAppliedState(state)
             callback(new_state)
-            return [new_state, []]
+            return (new_state, [])
         else:
             new_state = merged_mandatory.toAppliedState(state)
             callback(new_state)
-            return [new_state, self.optionalPaymentInfos]
+            return (new_state, self.optionalPaymentInfos)
                 
     
     @property
@@ -617,33 +617,46 @@ class CellNameLookups:
     def industrial_kinds(cls) -> set[str]:
         return cls._industrial_kinds
     
-_TRANSPORTATIONS: list[Trnsportation] = map(lambda n: Trnsportation((n * 9 + 1), (((n+1)%6) * 9 + 1)),range(0,6))
+_TRANSPORTATIONS: list[Trnsportation] = list(map(lambda n: Trnsportation((n * 9 + 1), (((n+1)%6) * 9 + 1)),range(0,6)))
 TRANSPORTATIONS: dict[int, Trnsportation] = {
     transportation.cellId: transportation for transportation in _TRANSPORTATIONS
 }
 
 LAND_DATA: list[list[tuple[int, str]]] = [
-    [[2,"목포"], [4,"강릉"]],
-    [[6,"전주"], [8,"'포항"]],
-    [[11,"천안"], [12,"춘천"], [13,"청주"]],
-    [[15,"성남"], [17,"창원"]],
-    [[20,"진천"], [22,"음성"]],
-    [[24,"구미"], [25,"서산"], [26,"순천"]],
-    [[29,"고양"], [30,"울산"]],
-    [[32,"수원"], [33,"광주"], [34,"대전"]],
-    [[38,"포천"], [40,"양주"]],
-    [[42,"용인"], [43,"여수"]],
-    [[47,"대구"], [48,"인천"], [49,"제주"]],
-    [[51,"부산"], [53,"서울"]]
+    [(2,"목포"), (4,"강릉")],
+    [(6,"전주"), (8,"'포항")],
+    [(11,"천안"), (12,"춘천"), (13,"청주")],
+    [(15,"성남"), (17,"창원")],
+    [(20,"진천"), (22,"음성")],
+    [(24,"구미"), (25,"서산"), (26,"순천")],
+    [(29,"고양"), (30,"울산")],
+    [(32,"수원"), (33,"광주"), (34,"대전")],
+    [(38,"포천"), (40,"양주")],
+    [(42,"용인"), (43,"여수")],
+    [(47,"대구"), (48,"인천"), (49,"제주")],
+    [(51,"부산"), (53,"서울")]
 ]
-_LANDS = map(lambda land: [land.cellId, land],reduce(lambda acc, curr: acc + curr,list(map(lambda item: list(map(lambda inner: Land(inner[0],inner[1],item[0] + 1),item[1])),enumerate(LAND_DATA))),list[Land]()))
+_LANDS = list[tuple[int, Land]](map(
+    lambda land: (land.cellId, land),
+    reduce(
+        lambda acc, curr: list[Land](acc + curr),
+        list[list[Land]](map(
+            lambda item: list[Land](map(
+                lambda inner: Land(cell_id=inner[0],name=inner[1],group_factor=item[0] + 1),
+                item[1]
+            )),
+            enumerate(LAND_DATA)
+        )),
+        list[Land]()
+    )
+))
 LAND_CELL_IDS = reduce(lambda acc, curr: acc + curr,list(map(lambda inner: list[int](map(lambda item: item[0],inner)),LAND_DATA)),list[int]())
 LANDS: dict[int, Land] = {
-    land.cellId: land for land in _LANDS
+    cellId: land for cellId, land in _LANDS
 }
 
 CHANCES = {
-    cellId: Chance(cellId) for cellId in [5,14,23,31,41,50]
+    cellId: Chance(cell_id=cellId) for cellId in [5,14,23,31,41,50]
 }
 
 INFRASTRUCTURES_MAP = {
@@ -667,10 +680,10 @@ OTHERS: dict[int,AbstractCellData] = {
 }
 
 
-from utils import DictMerger
+from utils import CellDictMerger
 
 
-CELLS = DictMerger().merge(LANDS).merge(TRANSPORTATIONS).merge(CHANCES).merge(INFRASTRUCTURES_MAP).merge(INDUSTRIALS_MAP).merge(OTHERS).extract()
+CELLS = CellDictMerger().merge(LANDS).merge(TRANSPORTATIONS).merge(CHANCES).merge(INFRASTRUCTURES_MAP).merge(INDUSTRIALS_MAP).merge(OTHERS).extract()
 
 assert set(range(54)) == CELLS.keys()
 

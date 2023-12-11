@@ -6,6 +6,16 @@ from functools import reduce
 
 import copy
 
+INITIAL_CASH=6000000
+
+
+boolLowercaseLiteral = Literal["true", "false"]
+primitiveJSONItemType = int | float | boolLowercaseLiteral | str
+listJSONType = list[primitiveJSONItemType]
+complexJSONType = listJSONType | primitiveJSONItemType
+completeJSONType = complexJSONType | dict[str, complexJSONType]
+JSONType = completeJSONType | dict[str,completeJSONType]
+
 class UniversityStateType(Enum):
     notYet = "notYet"
     undergraduate = "undergraduate"
@@ -26,11 +36,68 @@ class PlayerIconType(Enum):
 def getNextIcon(icon: PlayerIconType, players_count: Literal[2, 3, 4]) -> PlayerIconType:
     tmp = icon.value + 1
     output = tmp % players_count
-    return output
+    return PlayerIconType(output)
+
+
+class DiceType(Enum):
+    Null = 0
+    OneOne = 1
+    OneTwo = 2
+    OneThree = 3
+    OneFour = 4
+    OneFive = 5
+    OneSix = 6
+    TwoOne = 7
+    TwoTwo = 8
+    TwoThree = 9
+    TwoFour = 10
+    TwoFive = 11
+    TwoSix = 12
+    ThreeOne = 13
+    ThreeTwo = 14
+    ThreeThree = 15
+    ThreeFour = 16
+    ThreeFive = 17
+    ThreeSix = 18
+    FourOne = 19
+    FourTwo = 20
+    FourThree = 21
+    FourFour = 22
+    FourFive = 23
+    FourSix = 24
+    FiveOne = 25
+    FiveTwo = 26
+    FiveThree = 27
+    FiveFour = 28
+    FiveFive = 29
+    FiveSix = 30
+    SixOne = 31
+    SixTwo = 32
+    SixThree = 33
+    SixFour = 34
+    SixFive = 35
+    SixSix = 36
+
+
+
+DOUBLE_DICES: set[DiceType] = {
+    DiceType.OneOne,
+    DiceType.TwoTwo,
+    DiceType.ThreeThree,
+    DiceType.FourFour,
+    DiceType.FiveFive,
+    DiceType.SixSix
+}
+
+@dataclass
+class PlayerMetadataType(NamedTuple):
+    enterNum: int
+    email: str
+    icon: PlayerIconType
+
 
 @dataclass
 class PlayerType(NamedTuple):
-    email: str
     icon: PlayerIconType
     location: int
     displayLocation: int
@@ -54,21 +121,29 @@ class GameStateType(NamedTuple):
     roomId: str
     players: list[PlayerType]
     properties: dict[int,PropertyType]
-    nowInTurn: int
+    nowInTurn: PlayerIconType
     govIncome: int
     charityIncome: int
+    diceCache: DiceType
+    doublesCount: int
 
+class PaymentTransaction:
+    def __init__(self,
+        first: int,
+        second: int,
+        third: int,
+        fourth: int,
+        government: int,
+        charity: int
+    ):
+        self.first: int = first
+        self.second: int = second
+        self.third: int = third
+        self.fourth: int = fourth
+        self.government: int = government
+        self.charity: int = charity
 
-
-class PaymentTransaction(NamedTuple):
-    first: int
-    second: int
-    third: int
-    fourth: int
-    government: int
-    charity: int
-
-    def __add__(self, other: Self) -> Self:
+    def __add__(self, other):
         return PaymentTransaction(
             first=self.first + other.first,
             second=self.second + other.second,
@@ -78,7 +153,7 @@ class PaymentTransaction(NamedTuple):
             charity=self.charity + other.charity
         )
     
-    def __sub__(self, other: Self) -> Self:
+    def __sub__(self, other):
         return PaymentTransaction(
             first=self.first - other.first,
             second=self.second - other.second,
@@ -88,7 +163,17 @@ class PaymentTransaction(NamedTuple):
             charity=self.charity - other.charity
         )
     
-    def __mult__(self, c: int) -> Self:
+    def __mul__(self, c: int):
+        return PaymentTransaction(
+            first=self.first * c,
+            second=self.second * c,
+            third=self.third * c,
+            fourth=self.fourth * c,
+            government=self.government * c,
+            charity=self.charity * c
+        )
+    
+    def __rmul__(self, c: int):
         return PaymentTransaction(
             first=self.first * c,
             second=self.second * c,
@@ -128,7 +213,9 @@ class PaymentTransaction(NamedTuple):
             "government": self.government,
             "charity": self.charity
         }
-    def fromDict(d: dict[str, int]) -> Self:
+    
+    @classmethod
+    def fromDict(cls, d: dict[str, int]) -> Self:
         return PaymentTransaction(
             first=d["player0"],
             second=d["player1"],
@@ -137,40 +224,41 @@ class PaymentTransaction(NamedTuple):
             government=d["government"],
             charity=d["charity"]
         )
-    
-    def fromArray(_players: list[int], government: int = 0, charity: int = 0) -> Self:
+    @classmethod
+    def fromArray(cls, _players: list[int], government: int = 0, charity: int = 0) -> Self:
         players: list[int] = (_players + [0,0,0,0])[0:4]
         return PaymentTransaction(players[0],players[1], players[2], players[3], government,charity)
     
-    def toAppliedPlayer(self, player: PlayerType) -> PlayerType:
-        new_player = copy.deepcopy(player)
-        if player.icon == 0:
+    def toAppliedPlayer(self, player_status: PlayerType) -> PlayerType:
+        if player_status.icon == 0:
             selected = self.first
-        elif player.icon == 1:
+        elif player_status.icon == 1:
             selected = self.second
-        elif player.icon == 2:
+        elif player_status.icon == 2:
             selected = self.third
         else:
             selected = self.fourth
         
-        new_player.cash = new_player.cash + selected
-        return new_player
+        new_player_status = PlayerType(player_status.icon,player_status.location,player_status.displayLocation,player_status.cash + selected,
+                                       player_status.cycles,player_status.university,player_status.tickets,player_status.remainingJailTurns)
+        return new_player_status
             
     def toAppliedState(self, state: GameStateType) -> GameStateType:
-        new_state = copy.deepcopy(state)
-        new_state.govIncome = new_state.govIncome + self.government
-        new_state.charityIncome = new_state.charityIncome + self.charity
-        mapped = map(self.toAppliedPlayer,new_state.players)
-        new_state.players = list(mapped)
+        _govIncome = state.govIncome + self.government
+        _charityIncome = state.charityIncome + self.charity
+        tmp = GameStateType(state.roomId,copy.deepcopy(state.players),copy.deepcopy(state.properties),state.nowInTurn,_govIncome,_charityIncome, state.diceCache, state.doublesCount)
+        mapped = map(self.toAppliedPlayer,tmp.players)
+        new_state = GameStateType(tmp.roomId,list(mapped),tmp.properties,tmp.nowInTurn,tmp.govIncome,tmp.charityIncome, tmp.diceCache, tmp.doublesCount)
         return new_state
     
-    def distribute(amount_per_each: int, players_count: Literal[2,3,4]) -> Self:
+    @classmethod
+    def distribute(cls, amount_per_each: int, players_count: int) -> Self:
         return PaymentTransaction.fromArray([amount_per_each]*players_count)
             
 
 
 
-def mergeTransactions[I: Iterable[PaymentTransaction]](transactions: I):
+def mergeTransactions(transactions: Iterable[PaymentTransaction]):
     merged = reduce(lambda acc, curr: acc + curr,transactions,PaymentTransaction.blank())
     return merged
 
@@ -230,39 +318,40 @@ class UnidirectionalTransactor(AbstractTransactor[UnidirectionalPaymentKind]):
     def transact(self, payment: AbstractPaymentType[UnidirectionalPaymentKind]) -> PaymentTransaction:
         if payment.kind == "P2C":
             tmp: list[int] = [0,0,0,0]
-            tmp[self.my_icon] = -payment.cost
+            tmp[self.my_icon.value] = -payment.cost
             return PaymentTransaction.fromArray(tmp,0,payment.cost)
         elif payment.kind == "C2P":
             tmp: list[int] = [0,0,0,0]
-            tmp[self.my_icon] = payment.cost
+            tmp[self.my_icon.value] = payment.cost
             return PaymentTransaction.fromArray(tmp,0,-payment.cost)
         elif payment.kind == "P2G":
             tmp: list[int] = [0,0,0,0]
-            tmp[self.my_icon] = -payment.cost
+            tmp[self.my_icon.value] = -payment.cost
             return PaymentTransaction.fromArray(tmp,payment.cost,0)
         elif payment.kind == "G2P":
             tmp: list[int] = [0,0,0,0]
-            tmp[self.my_icon] = payment.cost
+            tmp[self.my_icon.value] = payment.cost
             return PaymentTransaction.fromArray(tmp,-payment.cost,0)
         elif payment.kind == "P2M":
             tmp: list[int] = [0,0,0,0]
-            tmp[self.my_icon] = -payment.cost
+            tmp[self.my_icon.value] = -payment.cost
             return PaymentTransaction.fromArray(tmp,0,0)
         else:
             tmp: list[int] = [0,0,0,0]
-            tmp[self.my_icon] = payment.cost
+            tmp[self.my_icon.value] = payment.cost
+            return PaymentTransaction.fromArray(tmp,0,0)
             
 
 class P2PTransactor(AbstractTransactor[P2PPaymentKind]):
     def __init__(self, from_icon: PlayerIconType, to_icon: PlayerIconType):
         self.from_icon: PlayerIconType = from_icon
-        self.to_icon: PlayerIconType - to_icon
+        self.to_icon: PlayerIconType = to_icon
 
     @override
     def transact(self, payment: AbstractPaymentType[P2PPaymentKind]) -> PaymentTransaction:
         tmp: list[int] = [0,0,0,0]
-        tmp[self.from_icon] = -payment.cost
-        tmp[self.to_icon] = payment.cost
+        tmp[self.from_icon.value] = -payment.cost
+        tmp[self.to_icon.value] = payment.cost
         return PaymentTransaction.fromArray(tmp)
 
 class P2OTransactor(AbstractTransactor[P2OPaymentKind]):
@@ -276,23 +365,23 @@ class P2OTransactor(AbstractTransactor[P2OPaymentKind]):
             return PaymentTransaction.blank()
         else:
             tmp: list[int] = [0,0,0,0]
-            tmp[self.player_icon] = -payment.cost
-            tmp[self.owner_icon] = payment.cost
+            tmp[self.player_icon.value] = -payment.cost
+            tmp[self.owner_icon.value] = payment.cost
             return PaymentTransaction.fromArray(tmp)          
 
 class P2DTransactor(AbstractTransactor[P2DPaymentKind]):
-    def __init__(self, player_icon: PlayerIconType, owner_icon: PlayerIconType, players_count: Literal[2,3,4]):
+    def __init__(self, player_icon: PlayerIconType, owner_icon: PlayerIconType, players_count: int):
         self.player_icon: PlayerIconType = player_icon
         self.owner_icon: PlayerIconType = owner_icon
-        self.players_count: Literal[2,3,4] = players_count
+        self.players_count: int = min(max(players_count,2),4)
 
     @override
     def transact(self, payment: AbstractPaymentType[P2OPaymentKind]) -> PaymentTransaction:
         tmp: list[int] = ([(payment.cost // self.players_count)] * self.players_count)
         if self.player_icon == self.owner_icon:
-            tmp[self.player_icon] = -((payment.cost // self.players_count) * (self.players_count - 1))
+            tmp[self.player_icon.value] = -((payment.cost // self.players_count) * (self.players_count - 1))
         else:
-            tmp[self.player_icon] = -((payment.cost // self.players_count) * (self.players_count))
+            tmp[self.player_icon.value] = -((payment.cost // self.players_count) * (self.players_count))
         return PaymentTransaction.fromArray(tmp)     
 
 class MarketGovTransactor(AbstractTransactor[MarketGovPaymentKind]):

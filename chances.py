@@ -6,11 +6,11 @@ import random
 from typing import Callable
 
 class ChanceCardType:
-    def __init__(self, chance_id: str, description: str, display_name: str, action: callable[[GameStateType, str], GameStateType], is_moving: bool):
+    def __init__(self, chance_id: str, description: str, display_name: str, action: Callable[[GameStateType, Literal[0,1,2,3]], GameStateType], is_moving: bool):
         self._chance_id: str = chance_id
         self._description: str = description
         self._display_name: str = display_name
-        self._action: Callable[[GameStateType, str], GameStateType] = action
+        self._action: Callable[[GameStateType, Literal[0,1,2,3]], GameStateType] = action
         self._is_moving: bool = is_moving
 
     @property
@@ -24,8 +24,8 @@ class ChanceCardType:
     def display_name(self) -> str:
         return self._display_name
     
-    def action(self, state: GameStateType, playerEmail: str) -> GameStateType:
-        return self._action(state,playerEmail)
+    def action(self, state: GameStateType, playerIcon: PlayerIconType) -> GameStateType:
+        return self._action(state,playerIcon.value)
     
     @property
     def is_moving(self) -> bool:
