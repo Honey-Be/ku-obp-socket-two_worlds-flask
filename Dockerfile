@@ -8,4 +8,4 @@ ADD . /app
 
 WORKDIR /app
 
-CMD ["python3", "app.py"]
+CMD ["flask","--app", "app", "run"]
