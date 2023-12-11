@@ -53,10 +53,8 @@ io = flask_socketio.SocketIO(
     ],
 )
 
-
-io.init_app(app)
-
 main = flask.Blueprint('main', __name__)
+
 
 
 
@@ -126,6 +124,9 @@ def joinRoom(json):
         io.emit("joinFailed", {"msg": "invalid room"})
 
 
+
+app.register_blueprint(main)
+io.init_app(app)
 
 @io.on("connect")
 def connect(sid, environ):
