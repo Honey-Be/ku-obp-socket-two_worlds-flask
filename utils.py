@@ -1026,6 +1026,14 @@ class GameCache:
             self.commitGameState(None, io)
             self._usePaymentChoicesCache = False
             self.prompt = CellPromptType.none
+        else:
+            remains = list(filter(lambda p: p[1].ownerIcon == self.nowInTurn, copy.deepcopy(self.properties.items())))
+            if len(remains) <= 0:
+                helpsWithCharity = cash_after + copy.deepcopy(self.charityIncome)
+                self.playerStates[self.nowInTurn.value].cash = helpsWithCharity
+                self.charityIncome = 0
+                if helpsWithCharity < 0:
+                    self.distributeBasicIncome()
                 
     
 
