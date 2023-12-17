@@ -484,9 +484,9 @@ class GameCache:
         playerEmails: list[str] = self.metadata.getPlayerEmailsList()
         isEnded: bool = self.metadata.isEnded
         if io is not None:
-            io.emit("notifyRoomStatus", JSON.dumps(playerEmails), JSON.dumps(isEnded), to=self.roomId, include_self=True)
+            io.emit("notifyRoomStatus", (JSON.dumps(playerEmails), JSON.dumps(isEnded)), to=self.roomId, include_self=True)
         else:
-            emit("notifyRoomStatus", JSON.dumps(playerEmails), JSON.dumps(isEnded), broadcast=False)
+            emit("notifyRoomStatus", (JSON.dumps(playerEmails), JSON.dumps(isEnded)), broadcast=False)
         
     def endGame(self, io: SocketIO):
         self.metadata.isEnded = True
