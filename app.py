@@ -112,19 +112,21 @@ def create():
 
 
 
-
+@io.on("joinRoom")
 def joinRoom(json):
     loaded = JSON.loads(json)
-    roomId = loaded["roomId"]
+    roomId = str(loaded["roomId"])
 
     if roomId in caches.keys():
         flask_socketio.join_room(roomId)
         emit("joinSucceed", broadcast=False)
         cache = caches[roomId]
         cache.notifyLoad()
+        print(f"join succeed to {roomId}")
 
     else:
         emit("joinFailed", {"msg": "invalid room"}, broadcast=False)
+        print("joinFailed: invalid room")
 
 
 def randomDice() -> tuple[Literal[1,2,3,4,5,6], Literal[1,2,3,4,5,6]]:
@@ -329,7 +331,7 @@ def extinction(json):
 def quickMove(json):
     loaded = JSON.loads(json)
     roomId = str(loaded["roomId"])
-    dest = int(loaded["roomId"])
+    dest = int(loaded["dest"])
 
     nowInTurn = caches[roomId].nowInTurn
     if dest in PREDEFINED_CELLS.keys():
@@ -414,7 +416,6 @@ def pickChance(json):
 @io.on("connect")
 def connect(sid, environ):
     print(f"{sid} is connected.")
-    io.on_event("joinRoom",joinRoom)
 
     io.on_event("reportNormalTurnDice", reportNormalTurnDIce)    
     io.on_event("sellForDebt", sellForDebt)
