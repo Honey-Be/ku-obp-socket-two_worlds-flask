@@ -114,6 +114,7 @@ def create():
 
 @io.on("joinRoom")
 def joinRoom(json):
+    print(f"\n\n{json}\n\n")
     loaded = json
     roomId = str(loaded["roomId"])
 
