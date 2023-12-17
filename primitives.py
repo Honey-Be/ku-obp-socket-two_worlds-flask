@@ -473,13 +473,20 @@ class MarketGovTransactor(AbstractTransactor[MarketGovPaymentKind]):
             return PaymentTransaction.fromArray([],payment.cost,0)
         
 
+
+def _augmentCellId(item: tuple[int, PropertyType]) -> dict[str, Any]:
+    (cellId, prop) = item
+    d = copy.deepcopy(prop.__dict__)
+    d["cellId"] = cellId
+    return copy.deepcopy(d)
+
 class GameStateJSONEncoder(JSON.JSONEncoder):
     def default(self, o: GameStateType) -> dict[str, Any]:
         _roomId: str = o.roomId
         _playerStates_orig: list[PlayerType] = copy.deepcopy(o.playerStates)
         _playerStates = list(map(PlayerType.encodeToJson,_playerStates_orig))
         _properties_orig: dict[int,PropertyType] = copy.deepcopy(o.properties)
-        _properties = dict(map(lambda o: (str(o[0]), o[1].__dict__),_properties_orig.items()))
+        _properties = list(map(_augmentCellId,_properties_orig.items()))
         _nowInTurn: PlayerIconType = o.nowInTurn
         _govIncome: int = o.govIncome
         _charityIncome: int = o.charityIncome
