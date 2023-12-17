@@ -1,12 +1,10 @@
 from enum import Enum
 from abc import ABC, ABCMeta, abstractproperty, abstractmethod
 from typing import Any, Self
-from manager import AbstractPaymentType, GameStateType, PlayerIconType
+
+import manager
 
 from primitives import *
-from primitives import AbstractPaymentType, GameStateType, PlayerIconType
-
-from manager import *
 
 from random import choice
 
@@ -34,16 +32,19 @@ class BuildableFlagType(Enum):
     OnlyOne = 1
     Normal = 3
 
+CATASTROPHE_TARGETS = [53, 51, 48, 47, 34, 33, 32, 30, 29, 17]
+
 class AbstractCellData(metaclass=ABCMeta):
     def __new__(cls, *args ,**kwds):
         this: Self = super().__new__(cls)
         return this
     
-    def __init__(self, cell_type: CellType, cell_id: int, name: str, group_factor: int = 0, **kwargs):
+    def __init__(self, cell_type: CellType, cell_id: int, name: str, maxBuildable: BuildableFlagType, group_factor: int = 0, **kwargs):
         self._cell_type: CellType = cell_type
         self._cell_id: int = cell_id
         self._name: str = name
         self.group_factor: int = group_factor
+        self._maxBuildable: BuildableFlagType = maxBuildable
     
     @property
     def cell_type(self) -> CellType:
@@ -54,9 +55,8 @@ class AbstractCellData(metaclass=ABCMeta):
         return self._name
 
     @property
-    @classmethod
-    @abstractmethod
-    def maxBuildable(cls) -> BuildableFlagType: pass
+    def maxBuildable(self) -> BuildableFlagType:
+        return self._maxBuildable
 
     @property
     @abstractmethod
@@ -81,12 +81,11 @@ class AbstractCellData(metaclass=ABCMeta):
     def passing(self, state: GameStateType, player_now_icon: PlayerIconType) -> GameStateType: pass
 
     @abstractmethod
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]: pass
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]: pass
 
 class Infrastructure(AbstractCellData):
     def __new__(cls, *args, **kwds):
         this = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2G",300000)
         ]
@@ -94,14 +93,7 @@ class Infrastructure(AbstractCellData):
 
     def __init__(self, kind: str):
         cell = INFRASTRUCTURES_LOOKUP[kind]
-        super().__init__(CellType.infrastructure,cell.cellId, cell.name)
-
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.infrastructure,cell.cellId, cell.name,BuildableFlagType.NotBuildable)
 
     @property
     @override
@@ -123,29 +115,21 @@ class Infrastructure(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged_mandatory.toAppliedState(state)
-        callback(new_state)
         return (new_state, [])
 class Land(AbstractCellData):
     def __new__(cls, *args, **kwds):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.Normal
         cls._optional_payment_infos: Sequence[AbstractPaymentType] = [
             P2OPayment(300000)
         ]
         return this
 
     def __init__(self, cell_id: int, name: str, group_factor: int):
-        super().__init__(CellType.land,cell_id,name, group_factor)
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.land,cell_id,name, BuildableFlagType.Normal, group_factor)
     
     @property
     @override
@@ -167,14 +151,14 @@ class Land(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         if self.cellId in state.properties.keys():
             p2o_transactor = P2OTransactor(player_now_icon,state.properties[self.cellId].ownerIcon)
             merged_p2o = mergeTransactions(map(p2o_transactor.transact,self.optionalPaymentInfos))
 
-            group_cellIds = _getGroupCellIds(self.cellId)
+            group_cellIds = getGroupCellIds(self.cellId)
             filtered = filter(lambda cid: cid in state.properties.keys(),group_cellIds)
             group_owned_counts = list(map(lambda cid: state.properties[cid].count,filtered))
 
@@ -183,32 +167,23 @@ class Land(AbstractCellData):
                 new_state = (merged_mandatory + merged_p2o * c).toAppliedState(state)
             else:
                 new_state = (merged_mandatory + merged_p2o).toAppliedState(state)
-            callback(new_state)
-            if state.properties[self.cellId].ownerIcon == player_now_icon and state.properties[self.cellId].count < 3:
+            if state.properties[self.cellId].ownerIcon == player_now_icon and state.properties[self.cellId].count < PREDEFINED_CELLS[self.cellId].maxBuildable.value:
                 return (new_state, self.optionalPaymentInfos)
             else:
                 return (new_state, [])
         else:
             new_state = merged_mandatory.toAppliedState(state)
-            callback(new_state)
             return (new_state, self.optionalPaymentInfos)
 
 class Lotto(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2M",200000)
         ]
         return this
     def __init__(self, cell_id: int = 3):
-        super().__init__(CellType.lotto,cell_id,"로또")
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.lotto,cell_id,"로또", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -230,25 +205,18 @@ class Lotto(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         return (state, self.optionalPaymentInfos)
 
 class Charity(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2C",600000)
         ]
         return this
     def __init__(self, cell_id: int = 52):
-        super().__init__(CellType.charity,cell_id,"구제기금")
-    
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.charity,cell_id,"구제기금", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -270,26 +238,18 @@ class Charity(AbstractCellData):
         return False
 
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged_mandatory.toAppliedState(state)
         
-        callback(new_state)
         return (new_state, [])
 class Chance(AbstractCellData):
     def __new__(cls, *args, **kwds):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int):
-        super().__init__(CellType.chance,cell_id,"변화카드")
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.chance,cell_id,"변화카드", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -310,29 +270,18 @@ class Chance(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
-        picked = choice(CHANCE_CARDS)
-        fmed = set(map(lambda player: player.icon, filter(lambda player: (player.icon == player_now_icon),state.players)))
-        new_state = reduce(lambda acc,curr: picked.action(copy.deepcopy(acc), curr),fmed,state)
-        callback(new_state)
-        return (new_state, [])
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (state, [])
     
 
 class Trnsportation(AbstractCellData):
     def __new__(cls, *args, **kwds):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int, dest: int):
-        super().__init__(CellType.transportation,cell_id,"대중교통")
+        super().__init__(CellType.transportation,cell_id,"대중교통", BuildableFlagType.NotBuildable)
         self._dest: int = dest
 
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
-    
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -356,25 +305,18 @@ class Trnsportation(AbstractCellData):
         return False
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
-        return warp(state,player_now_icon,self.dest,callback,do_arrived=False)
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (state, [])
 
 class Hospital(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2M",200000)
         ]
         return this
     def __init__(self, cell_id: int = 45):
-        super().__init__(CellType.hospital,cell_id,"병원")
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.hospital,cell_id,"병원", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -391,13 +333,12 @@ class Hospital(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged.toAppliedState(state)
         
-        callback(new_state)
-        return (new_state, [])
+        return (new_state, []) 
     
     @property
     @override
@@ -407,16 +348,9 @@ class Hospital(AbstractCellData):
 class Park(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int = 36):
-        super().__init__(CellType.park,cell_id,"공원")
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.park,cell_id,"공원", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -432,7 +366,7 @@ class Park(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         return (state, [])
     
     @property
@@ -443,16 +377,9 @@ class Park(AbstractCellData):
 class University(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         return this
     def __init__(self, cell_id: int = 18):
-        super().__init__(CellType.university,cell_id,"대학")
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.university,cell_id,"대학", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -469,9 +396,8 @@ class University(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
-        new_state = universityAction(state,player_now_icon)
-        callback(new_state)
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        new_state = manager.universityAction(state,player_now_icon)
         return (new_state, [])
     
     @property
@@ -482,20 +408,13 @@ class University(AbstractCellData):
 class Jail(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos: Sequence[AbstractPaymentType] = [
             UnidirectionalPayment("P2G",400000)
         ]
         return this
     def __init__(self, cell_id: int = 9):
-        super().__init__(CellType.jail,cell_id,"감옥")
-    
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
-    
+        super().__init__(CellType.jail,cell_id,"감옥", BuildableFlagType.NotBuildable)
+
     @property
     @override
     def mandatoryPaymentInfos(self) -> Sequence[AbstractPaymentType]:
@@ -511,8 +430,8 @@ class Jail(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
-        return (imprisonment(state,player_now_icon), [])
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+        return (manager.imprisonment(state,player_now_icon), [])
     
     @property
     @override
@@ -523,18 +442,11 @@ class Jail(AbstractCellData):
 class Start(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
-        cls._salery_info = UnidirectionalPayment("M2P", 4000000)
+        cls._salery_info = UnidirectionalPayment("M2P", 6000000)
         cls._taxes_info = UnidirectionalPayment("P2G", 1000000)
         return this
     def __init__(self):
-        super().__init__(CellType.start,0,"출발")
-    
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.start,0,"출발", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -548,12 +460,12 @@ class Start(AbstractCellData):
 
     @staticmethod
     def _getSalery(state: GameStateType, player_now_icon: PlayerIconType, salary_payments: Sequence[AbstractPaymentType]) -> GameStateType:
-        count = min(len(state.players),4)
+        count = min(len(state.playerStates),4)
         if count >= 2 and count <= 4:
             transactor = UnidirectionalTransactor(player_now_icon)
             merged = mergeTransactions(map(transactor.transact,salary_payments))
             tmp = merged.toAppliedState(state)
-            new_state = distributeBasicIncome(tmp)
+            new_state = manager.distributeBasicIncome(tmp)
             return new_state
         else:
             return state
@@ -564,7 +476,7 @@ class Start(AbstractCellData):
         return Start._getSalery(state,player_now_icon,self.mandatoryPaymentInfos)
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         return (Start._getSalery(state,player_now_icon,self.mandatoryPaymentInfos), [])
     
     @property
@@ -575,7 +487,6 @@ class Start(AbstractCellData):
 class Concert(AbstractCellData):
     def __new__(cls):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._payment_infos = [
             UnidirectionalPayment("P2M", 2000000),
             UnidirectionalPayment("P2G", 2000000),
@@ -583,13 +494,7 @@ class Concert(AbstractCellData):
         ]
         return this
     def __init__(self, cell_id: int = 27):
-        super().__init__(CellType.concert,cell_id,"콘서트 (feat. IU)")
-    
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.concert,cell_id,"콘서트 (feat. IU)", BuildableFlagType.NotBuildable)
     
     @property
     @override
@@ -606,7 +511,7 @@ class Concert(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         new_state = merged.toAppliedState(state)
@@ -621,20 +526,13 @@ class Concert(AbstractCellData):
 class Industrial(AbstractCellData):
     def __new__(cls, *args, **kwds):
         this: Self = super().__new__(cls)
-        cls._maxBuildable: BuildableFlagType = BuildableFlagType.NotBuildable
         cls._mandatory_payment_info = UnidirectionalPayment("P2G",600000)
         cls._optional_payment_info = P2DPayment(300000)
         return this
 
     def __init__(self, kind: str):
         cell = INDUSTRIALS_LOOKUP[kind]
-        super().__init__(CellType.infrastructure,cell.cellId, cell.name)
-
-    @property
-    @override
-    @classmethod
-    def maxBuildable(cls) -> BuildableFlagType:
-        return cls._maxBuildable
+        super().__init__(CellType.infrastructure,cell.cellId, cell.name, BuildableFlagType.OnlyOne)
     
     @property
     @override
@@ -651,18 +549,16 @@ class Industrial(AbstractCellData):
         return state
     
     @override
-    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType, callback: Callable[[GameStateType], None]) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
+    def arrived(self, state: GameStateType, player_now_icon: PlayerIconType) -> tuple[GameStateType, Sequence[AbstractPaymentType]]:
         transactor = UnidirectionalTransactor(player_now_icon)
         merged_mandatory = mergeTransactions(map(transactor.transact,self.mandatoryPaymentInfos))
         if self.cellId in state.properties.keys():
-            p2d_transactor = P2DTransactor(player_now_icon,state.properties[self.cellId].ownerIcon,min(4,max(2,len(state.players))))
+            p2d_transactor = P2DTransactor(player_now_icon,state.properties[self.cellId].ownerIcon,min(4,max(2,len(state.playerStates))))
             merged_p2d = mergeTransactions(map(p2d_transactor.transact,self.optionalPaymentInfos))
             new_state = (merged_mandatory+merged_p2d).toAppliedState(state)
-            callback(new_state)
             return (new_state, [])
         else:
             new_state = merged_mandatory.toAppliedState(state)
-            callback(new_state)
             return (new_state, self.optionalPaymentInfos)
                 
     
@@ -762,9 +658,9 @@ def gen_cells():
     items.sort(key=lambda t: t[0])
     return dict(items)
 
-CELLS = gen_cells()
+PREDEFINED_CELLS = gen_cells()
 
-def _getGroupCellIds(cellId: int) -> set[int]:
-        group_factor = CELLS[cellId].group_factor
-        filtered = dict(filter(lambda item: item[1].group_factor == group_factor,CELLS.items()))
+def getGroupCellIds(cellId: int) -> set[int]:
+        group_factor = PREDEFINED_CELLS[cellId].group_factor
+        filtered = dict(filter(lambda item: item[1].group_factor == group_factor,PREDEFINED_CELLS.items()))
         return set(copy.deepcopy(filtered.keys()))

@@ -1,4 +1,8 @@
+from copy import deepcopy
 from functools import cache
+from math import floor
+from time import sleep
+from tkinter.filedialog import LoadFileDialog
 import flask
 
 import flask_socketio
@@ -12,6 +16,10 @@ from primitives import *
 from cells import *
 from chances import *
 from utils import *
+
+import random
+
+import copy
 
 
 class RoomCreationExceptionReason(Enum):
@@ -79,6 +87,7 @@ def tryCreate():
 
 
 
+
 @main.route("/")
 def index():
     return "<div>Hello, World!</div>"
@@ -98,30 +107,300 @@ def create():
         return response
     finally:
         print("/crate call 호출됨")
-        
+
+
+
+
 
 def joinRoom(json):
     loaded = JSON.loads(json)
-    playerEmail = loaded["playerEmail"]
     roomId = loaded["roomId"]
 
     if roomId in caches.keys():
         flask_socketio.join_room(roomId)
         io.emit("joinSucceed")
         cache = caches[roomId]
-        state: GameStateType = cache.gameState
-        serialized = serializeGameState(state)
-        isPlayable = "true" if cache.metadata.has_emails(playerEmail) else "false"
-        payload = { "refresh": "true" , "gameState": serialized, "nowInTurnEmail": cache.nowInTurnEmail, "isPlayable": isPlayable}
-        io.emit("updateGameState",payload)
-        io.emit("updateDoublesCount",cache.doublesCount)
-        dices = DICE_LOOKUP[cache.diceCache]
-        io.emit("showDIces",{ "dice1": dices[0], "dice2": dices[1]})
+        cache.notifyLoad()
 
     else:
         io.emit("joinFailed", {"msg": "invalid room"})
 
 
+def randomDice() -> tuple[Literal[1,2,3,4,5,6], Literal[1,2,3,4,5,6]]:
+    base: list[Literal[1,2,3,4,5,6]] = [1,2,3,4,5,6]
+    dice1 = random.choice(base)
+    dice2 = random.choice(base)
+    return (dice1, dice2)
+    
+
+
+def reportNormalTurnDIce(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    
+    (dice1, dice2) = randomDice()
+    
+    caches[roomId].reportDices(dice1, dice2, io)
+    caches[roomId].go((dice1+dice2),io)
+
+
+
+
+def sellForDebt(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    targetLocation = int(loaded["targetLocation"])
+    amount = int(loaded["amount"])
+    
+    cache = caches[roomId]
+    cache.sellForDebt(targetLocation,amount,io)
+
+def _nextTurn(roomId: str, jailbreak: bool = False):
+    caches[roomId].prompt = CellPromptType.none
+    sleep(0.6)
+    isdouble = caches[roomId].isDouble() and not jailbreak
+    triggerEndGame = caches[roomId].tryNextTurn(isdouble, io)
+    caches[roomId].commitGameState(None,io)
+    if triggerEndGame:
+        caches[roomId].endGame(io)
+
+def lotto(judge: Callable[[Eisenstein], bool]) -> bool:
+    a = round(random.gammavariate(3,2))
+    b = round(random.gammavariate(3,2))
+    x = Eisenstein(a,b)
+    return judge(x)
+
+def _calculateLottoRewards(roomId: str, final_result: int):
+    nowInTurn = caches[roomId].nowInTurn
+    if final_result >= 3:
+        reward: int = 2000000
+    elif final_result == 2:
+        reward: int = 1000000
+    elif final_result == 1:
+        reward: int = 500000
+    else:
+        reward: int = 0
+    
+    after = caches[roomId].playerStates[nowInTurn.value].cash + reward
+    caches[roomId].playerStates[nowInTurn.value].cash = after
+
+    caches[roomId].lottoSuccess = 0
+
+def tryLotto(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    
+    nowInTurn = caches[roomId].nowInTurn
+    beforeCash = caches[roomId].playerStates[nowInTurn.value].cash
+    if beforeCash >= 200000:
+        caches[roomId].playerStates[nowInTurn.value].cash = max(0,beforeCash - 200000)
+    
+        before = max(0,caches[roomId].lottoSuccess)
+        judgement = lotto(Eisenstein.isPrime)
+        if judgement:
+            if (before >= 2) or (caches[roomId].playerStates[nowInTurn.value].cash < 200000):
+                _calculateLottoRewards(roomId,3)
+                _nextTurn(roomId)
+            else:
+                caches[roomId].lottoSuccess = before + 1
+                caches[roomId].commitGameState(None,io)
+        else:
+            _nextTurn(roomId)
+    else:
+        _nextTurn(roomId)
+        
+
+def purchase(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    amount = min(3,max(1,int(loaded["amount"])))
+    nowInTurn = caches[roomId].nowInTurn
+    cellId = (caches[roomId].playerStates[nowInTurn.value].location) % 54
+    maxBuildable = PREDEFINED_CELLS[cellId].maxBuildable
+    if maxBuildable == BuildableFlagType.NotBuildable:
+        pass
+    elif cellId in caches[roomId].properties.keys():
+        before_count = caches[roomId].properties[cellId].count
+        before_cash = caches[roomId].playerStates[nowInTurn.value].cash
+        available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles, maxBuildable.value - before_count)
+        if (available_amount > 0) and (before_cash >= (300000 * available_amount)):
+            (
+                caches[roomId].properties[cellId].count,
+                caches[roomId].playerStates[nowInTurn.value].cash
+            ) = (
+                before_count + available_amount,
+                before_cash - (300000 * available_amount)
+            )
+        else:
+            pass
+    else:
+        before_cash = caches[roomId].playerStates[nowInTurn.value].cash
+        available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles, maxBuildable.value)
+        if (available_amount > 0) and (before_cash >= (300000 * available_amount)):
+            (
+                caches[roomId].properties[cellId].count,
+                caches[roomId].playerStates[nowInTurn.value].cash
+            ) = (
+                available_amount,
+                before_cash - (300000 * available_amount)
+            )
+        else:
+            pass
+    _nextTurn(roomId)
+
+
+def tryJailExitByDice(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+
+    (dice1, dice2) = randomDice()
+    
+    caches[roomId].reportDices(dice1, dice2, io)
+
+    dices = DICE_REVERSE_LOOKUP[(dice1, dice2)]
+
+    caches[roomId].tryJailExit(dices)
+
+def jailExitThanksToLawyer(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+
+    caches[roomId].tryJailExit(DiceType.Null,True)
+
+
+def jailExitByCash(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+
+    caches[roomId].tryJailExit(DiceType.Null,False)
+
+
+def trafficJam(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    target = int(loaded["target"]) % 54
+
+    if target in caches[roomId].properties.keys() and (PREDEFINED_CELLS[target].maxBuildable != BuildableFlagType.NotBuildable) and caches[roomId].properties[target].ownerIcon != caches[roomId].nowInTurn:
+        before = caches[roomId].properties[target].count
+        caches[roomId].properties[target].count = max(0,before - 1)
+        caches[roomId]._garbageCollection()
+        _nextTurn(roomId)
+
+
+def trade(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    toGive = int(loaded["toGive"]) % 54
+    toGet = int(loaded["toGet"]) % 54
+
+    nowInTurn = caches[roomId].nowInTurn
+
+    isMine = toGive in caches[roomId].properties.keys() and (PREDEFINED_CELLS[toGive].maxBuildable != BuildableFlagType.NotBuildable) and (caches[roomId].properties[toGive].ownerIcon == nowInTurn)
+    isOthers = toGet in caches[roomId].properties.keys() and (PREDEFINED_CELLS[toGet].maxBuildable != BuildableFlagType.NotBuildable) and (caches[roomId].properties[toGet].ownerIcon != nowInTurn)
+
+    if isMine and isOthers:
+        (tmp1, tmp2) = (caches[roomId].properties[toGive].ownerIcon.value, caches[roomId].properties[toGet].ownerIcon.value)
+        (caches[roomId].properties[toGive].ownerIcon, caches[roomId].properties[toGet].ownerIcon) = (PlayerIconType(tmp2), PlayerIconType(tmp1))
+        _nextTurn(roomId)
+
+def extinction(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    targetGroup = int(loaded["targetGroup"])
+
+    groupCellIds = dict(filter(lambda cell: cell[1].group_factor == targetGroup,PREDEFINED_CELLS.items()))
+    searchResult = set(copy.deepcopy(groupCellIds.keys())).intersection(caches[roomId].properties.keys())
+
+    copied = copy.deepcopy(caches[roomId].properties)
+
+    flag: bool = False
+    for cellId in searchResult:
+        before = copied[cellId].count
+        copied[cellId].count = max(0,before - 1)
+        flag = True
+    else:
+        if flag:
+            caches[roomId].properties = copy.deepcopy(copied)
+            _nextTurn(roomId)
+
+def quickMove(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    dest = int(loaded["roomId"])
+
+    nowInTurn = caches[roomId].nowInTurn
+    if dest in PREDEFINED_CELLS.keys():
+        if dest == caches[roomId].playerStates[nowInTurn.value].location:
+            amount = 54
+        else:
+            amount = dest - caches[roomId].playerStates[nowInTurn.value].location
+        turn_finished = caches[roomId].go(amount, io)
+        if turn_finished:
+            _nextTurn(roomId)
+
+
+def greenNewDeal(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+    target = int(loaded["target"])
+
+    nowInTurn = caches[roomId].nowInTurn
+
+    if target in caches[roomId].properties.keys():
+        before = caches[roomId].properties[target].count
+        maximum = PREDEFINED_CELLS[target].maxBuildable.value
+        if (caches[roomId].properties[target].ownerIcon == nowInTurn) and (before < PREDEFINED_CELLS[target].maxBuildable.value):
+            caches[roomId].properties[target].count = min(before + 1, maximum)
+            _nextTurn(roomId)
+            
+
+def quirkOfFate(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
+
+    (dice1, dice2) = randomDice()
+    io.emit("showQuirkOfFateStatus", dice1, dice2)
+
+    l = len(caches[roomId].playerStates)
+
+    nowInTurn = caches[roomId].nowInTurn
+
+    if l == 2:
+        target = (caches[roomId].nowInTurn.value + dice1 + dice2) % 2
+    elif l == 3:
+        target = (caches[roomId].nowInTurn.value + dice1 + dice2) % 3
+    elif l == 4:
+        target = (caches[roomId].nowInTurn.value + dice1 + dice2) % 4
+    else:
+        return
+    
+    if target != nowInTurn.value:
+        copied = copy.deepcopy(caches[roomId].properties)
+        myPropertyIds = set(map(lambda p: p[0],filter(lambda p: p[1].ownerIcon.value == nowInTurn.value,copied.items())))
+        targetsPropertyIds = set(map(lambda p: p[0],filter(lambda p: p[1].ownerIcon.value == target,copied.items())))
+        targetIcon = getIcon(target)
+        for myPropertyId in myPropertyIds:
+            caches[roomId].properties[myPropertyId].ownerIcon = targetIcon
+        
+        for targetsPropertyId in targetsPropertyIds:
+            caches[roomId].properties[targetsPropertyId].ownerIcon = nowInTurn
+
+        (
+            caches[roomId].playerStates[nowInTurn.value].cash,
+            caches[roomId].playerStates[target].cash
+        ) = (
+            caches[roomId].playerStates[target].cash,
+            caches[roomId].playerStates[nowInTurn.value].cash
+        )
+
+    _nextTurn(roomId)
+
+
+    
+
+def pickChance(json):
+    loaded = JSON.loads(json)
+    roomId = str(loaded["roomId"])
 
 
 
@@ -131,10 +410,22 @@ def joinRoom(json):
 @io.on("connect")
 def connect(sid, environ):
     print(f"{sid} is connected.")
-    io.on_event("joinRoom",joinRoom)    
+    io.on_event("joinRoom",joinRoom)
 
+    io.on_event("reportNormalTurnDice", reportNormalTurnDIce)    
+    io.on_event("sellForDebt", sellForDebt)
 
-
+    io.on_event("tryLotto", tryLotto)
+    io.on_event("tryJailExitByDice", tryJailExitByDice)
+    io.on_event("jailExitThanksToLawyer", jailExitThanksToLawyer)
+    io.on_event("jailExitByCash", jailExitByCash)
+    io.on_event("trafficJam", trafficJam)
+    io.on_event("trade", trade)
+    io.on_event("extinction", extinction)
+    io.on_event("quickMove", quickMove)
+    io.on_event("greenNewDeal", greenNewDeal)
+    io.on_event("quirkOfFate", quirkOfFate)
+    io.on_event("pickChance", pickChance)
 
 
 

@@ -21,27 +21,81 @@ class UniversityStateType(Enum):
     undergraduate = "undergraduate"
     graduated = "graduated"
 
-@dataclass
 class TicketsType:
     def __init__(self,
-        discountRent: int,
-        bonus: bool,
-        doubleLotto: int
+        feeExemption: int = 0,
+        taxExemption: int = 0,
+        bonus: int = 0,
+        doubleLotto: int = 0,
+        lawyer: int = 0,
+        freeHospital: int = 0
     ):
-        self.discountRent: int = discountRent
-        self.bonus: bool = bonus
-        self.doubleLotto: int = doubleLotto
+        self._feeExemption: int = feeExemption # 토지 및 건물 사용료 면제
+        self._taxExemption: int = taxExemption # 다음 차례 출발지 도착/경유 시 공과금 면제
+        self._bonus: int = bonus # 다음 차례 출발지 도착/경유 시 2배의 급여를 받습니다.
+        self._doubleLotto: int = doubleLotto # (로또 칸에서) 사용 시 더블 로또
+        self._lawyer: int = lawyer # (감옥에서) 사용 시 즉시 석방
+        self._freeHospital: int = freeHospital # (병원에서) 사용 시 병원비 무료
+    
+    
+    @property
+    def feeExemption(self) -> int: return self._feeExemption
+    @property
+    def taxExemption(self) -> int: return self._taxExemption
+    @property
+    def bonus(self) -> int: return self._bonus
+    @property
+    def doubleLotto(self) -> int: return self._doubleLotto
+    @property
+    def lawyer(self) -> int: return self._lawyer
+    @property
+    def freeHospital(self) -> int: return self._freeHospital
 
+
+    @feeExemption.setter
+    def feeExemption(self, value: int): self._feeExemption = value
+    @taxExemption.setter
+    def taxExemption(self, value: int): self._taxExemption = value
+    @bonus.setter
+    def bonus(self, value: int): self._bonus = value
+    @doubleLotto.setter
+    def doubleLotto(self, value: int): self._doubleLotto = value
+    @lawyer.setter
+    def lawyer(self, value: int): self._lawyer = value
+    @freeHospital.setter
+    def freeHospital(self, value: int): self._freeHospital = value
+
+
+
+        
 class PlayerIconType(Enum):
     first = 0
     second = 1
     third = 2
     fourth = 3
 
+
+def getIcon(value: Literal[0,1,2,3]) -> PlayerIconType:
+    if value == 0:
+        return PlayerIconType.first
+    elif value == 1:
+        return PlayerIconType.second
+    elif value == 2:
+        return PlayerIconType.third
+    else:
+        return PlayerIconType.fourth
+
 def getNextIcon(icon: PlayerIconType, players_count: Literal[2, 3, 4]) -> PlayerIconType:
     tmp = icon.value + 1
     output = tmp % players_count
-    return PlayerIconType(output)
+    if output == 0:
+        return PlayerIconType.first
+    elif output == 1:
+        return PlayerIconType.second
+    elif output == 2:
+        return PlayerIconType.third
+    else:
+        return PlayerIconType.fourth
 
 
 class DiceType(Enum):
@@ -110,18 +164,18 @@ class PlayerMetadataType:
 class PlayerType:
     def __init__(self,
         icon: PlayerIconType,
-        location: int,
-        displayLocation: int,
-        cash: int,
-        cycles: int,
-        university: UniversityStateType,
-        tickets: TicketsType,
-        remainingJailTurns: int
+        location: int = 0,
+        displayLocation: int = INITIAL_CASH,
+        cash: float = 0,
+        cycles: int = 0,
+        university: UniversityStateType = UniversityStateType.notYet,
+        tickets: TicketsType = TicketsType(),
+        remainingJailTurns: int = 0
     ):
         self.icon: PlayerIconType = icon
         self.location: int = location
         self.displayLocation: int = displayLocation
-        self.cash: int = cash
+        self.cash: float = cash
         self.cycles: int = cycles
         self.university: UniversityStateType = university
         self.tickets: TicketsType = tickets
@@ -133,36 +187,34 @@ class PropertyType:
         self.ownerIcon: PlayerIconType = ownerIcon
         self.count: int = count
 @dataclass
-class SidecarType:
-    def __init__(self, limitRents: int):
-        self.limitRents: int = limitRents
-@dataclass
 class GameStateType:
-    def __init__(self, roomId: str, players: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType,doublesCount: int):
+    def __init__(self, roomId: str, players: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doublesCount: int, remainingCatastropheTurns: int, remainingPandemicTurns: int):
         self.roomId: str = roomId
-        self.players: list[PlayerType] = copy.deepcopy(players)
+        self.playerStates: list[PlayerType] = copy.deepcopy(players)
         self.properties: dict[int,PropertyType] = copy.deepcopy(properties)
         self.nowInTurn: PlayerIconType = nowInTurn
         self.govIncome: int = govIncome
         self.charityIncome: int = charityIncome
         self.diceCache: DiceType = diceCache
         self.doublesCount: int = doublesCount
+        self.remainingCatastropheTurns: int = remainingCatastropheTurns
+        self.remainingPandemicTurns: int = remainingPandemicTurns
 
 
 @dataclass
 class PaymentTransaction:
     def __init__(self,
-        first: int,
-        second: int,
-        third: int,
-        fourth: int,
+        first: float,
+        second: float,
+        third: float,
+        fourth: float,
         government: int,
         charity: int
     ):
-        self.first: int = first
-        self.second: int = second
-        self.third: int = third
-        self.fourth: int = fourth
+        self.first: float = first
+        self.second: float = second
+        self.third: float = third
+        self.fourth: float = fourth
         self.government: int = government
         self.charity: int = charity
 
@@ -206,7 +258,7 @@ class PaymentTransaction:
             charity=self.charity * c
         )
     
-    def __neg__(self) -> Self:
+    def __neg__(self):
         return PaymentTransaction(
             first = (-self.first),
             second = (-self.second),
@@ -217,7 +269,7 @@ class PaymentTransaction:
         )
     
     @classmethod
-    def blank(cls) -> Self:
+    def blank(cls):
         return PaymentTransaction(
             first=0,
             second=0,
@@ -227,28 +279,8 @@ class PaymentTransaction:
             charity=0
         )
     
-    def toDict(self) -> dict[str, int]:
-        return {
-            "player0": self.first,
-            "player1": self.second,
-            "player2": self.third,
-            "player3": self.fourth,
-            "government": self.government,
-            "charity": self.charity
-        }
-    
     @classmethod
-    def fromDict(cls, d: dict[str, int]) -> Self:
-        return PaymentTransaction(
-            first=d["player0"],
-            second=d["player1"],
-            third=d["player2"],
-            fourth=d["player3"],
-            government=d["government"],
-            charity=d["charity"]
-        )
-    @classmethod
-    def fromArray(cls, _players: list[int], government: int = 0, charity: int = 0) -> Self:
+    def fromArray(cls, _players: list[int], government: int = 0, charity: int = 0):
         players: list[int] = (_players + [0,0,0,0])[0:4]
         return PaymentTransaction(players[0],players[1], players[2], players[3], government,charity)
     
@@ -269,13 +301,13 @@ class PaymentTransaction:
     def toAppliedState(self, state: GameStateType) -> GameStateType:
         _govIncome = state.govIncome + self.government
         _charityIncome = state.charityIncome + self.charity
-        tmp = GameStateType(state.roomId,copy.deepcopy(state.players),copy.deepcopy(state.properties),state.nowInTurn,_govIncome,_charityIncome, state.diceCache, state.doublesCount)
-        mapped = map(self.toAppliedPlayer,tmp.players)
-        new_state = GameStateType(tmp.roomId,list(mapped),tmp.properties,tmp.nowInTurn,tmp.govIncome,tmp.charityIncome, tmp.diceCache, tmp.doublesCount)
+        tmp = GameStateType(state.roomId,copy.deepcopy(state.playerStates),copy.deepcopy(state.properties),state.nowInTurn,_govIncome,_charityIncome, state.diceCache, state.doublesCount, state.remainingCatastropheTurns, state.remainingPandemicTurns)
+        mapped = map(self.toAppliedPlayer,tmp.playerStates)
+        new_state = GameStateType(tmp.roomId,list(mapped),tmp.properties,tmp.nowInTurn,tmp.govIncome,tmp.charityIncome, tmp.diceCache, tmp.doublesCount, tmp.remainingCatastropheTurns, tmp.remainingPandemicTurns)
         return new_state
     
     @classmethod
-    def distribute(cls, amount_per_each: int, players_count: int) -> Self:
+    def distribute(cls, amount_per_each: int, players_count: int):
         return PaymentTransaction.fromArray([amount_per_each]*players_count)
             
 
@@ -398,15 +430,15 @@ class P2DTransactor(AbstractTransactor[P2DPaymentKind]):
     def __init__(self, player_icon: PlayerIconType, owner_icon: PlayerIconType, players_count: int):
         self.player_icon: PlayerIconType = player_icon
         self.owner_icon: PlayerIconType = owner_icon
-        self.players_count: int = min(max(players_count,2),4)
+        self.playerStates_count: int = min(max(players_count,2),4)
 
     @override
     def transact(self, payment: AbstractPaymentType[P2OPaymentKind]) -> PaymentTransaction:
-        tmp: list[int] = ([(payment.cost // self.players_count)] * self.players_count)
+        tmp: list[int] = ([(payment.cost // self.playerStates_count)] * self.playerStates_count)
         if self.player_icon == self.owner_icon:
-            tmp[self.player_icon.value] = -((payment.cost // self.players_count) * (self.players_count - 1))
+            tmp[self.player_icon.value] = -((payment.cost // self.playerStates_count) * (self.playerStates_count - 1))
         else:
-            tmp[self.player_icon.value] = -((payment.cost // self.players_count) * (self.players_count))
+            tmp[self.player_icon.value] = -((payment.cost // self.playerStates_count) * (self.playerStates_count))
         return PaymentTransaction.fromArray(tmp)     
 
 class MarketGovTransactor(AbstractTransactor[MarketGovPaymentKind]):
