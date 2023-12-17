@@ -497,8 +497,9 @@ class GameCache:
 
     def notifyLoad(self) -> None:
         self.notifyRoomStatus(None)
-        gameState: GameStateType = copy.deepcopy(self.gameState)
-        emit("updateGameState",JSON.dumps(gameState),broadcast=False)
+        gameStatePayload = JSON.dumps(self.gameState)
+        print(f"\n\n\n{gameStatePayload}\n\n\n")
+        emit("updateGameState",gameStatePayload,broadcast=False)
         emit("updateDoublesCount",JSON.dumps(self.doublesCount),broadcast=False)
         emit("showDices",JSON.dumps(self.diceCache.value),broadcast=False)
         emit("updateChanceCardDisplay", JSON.dumps(self.chanceCardDisplay), broadcast=False)
