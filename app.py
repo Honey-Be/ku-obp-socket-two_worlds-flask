@@ -53,7 +53,11 @@ flask_cors.CORS(app,origins=[
 
 
 io = flask_socketio.SocketIO(app,
-    cors_allowed_origins="*"
+    cors_allowed_origins=[
+        "https://ku-obp.vercel.app",
+        "https://ku-obp-gamma.vercel.app",
+        "http://localhost:3000",
+    ],
     
     
 )
