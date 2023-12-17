@@ -252,6 +252,7 @@ def purchase(json):
             )
         else:
             pass
+    
     _nextTurn(roomId)
 
 
@@ -266,12 +267,16 @@ def tryJailExitByDice(json):
     dices = DICE_REVERSE_LOOKUP[(dice1, dice2)]
 
     caches[roomId].tryJailExit(dices)
+    
+    _nextTurn(roomId)
 
 def jailExitThanksToLawyer(json):
     loaded = json
     roomId = str(loaded["roomId"])
 
     caches[roomId].tryJailExit(DiceType.Null,True)
+    
+    _nextTurn(roomId)
 
 
 def jailExitByCash(json):
@@ -279,6 +284,8 @@ def jailExitByCash(json):
     roomId = str(loaded["roomId"])
 
     caches[roomId].tryJailExit(DiceType.Null,False)
+    
+    _nextTurn(roomId)
 
 
 def trafficJam(json):
@@ -290,6 +297,7 @@ def trafficJam(json):
         before = caches[roomId].properties[target].count
         caches[roomId].properties[target].count = max(0,before - 1)
         caches[roomId]._garbageCollection()
+        
         _nextTurn(roomId)
 
 
@@ -307,6 +315,7 @@ def trade(json):
     if isMine and isOthers:
         (tmp1, tmp2) = (caches[roomId].properties[toGive].ownerIcon.value, caches[roomId].properties[toGet].ownerIcon.value)
         (caches[roomId].properties[toGive].ownerIcon, caches[roomId].properties[toGet].ownerIcon) = (PlayerIconType(tmp2), PlayerIconType(tmp1))
+        
         _nextTurn(roomId)
 
 def extinction(json):
@@ -327,6 +336,7 @@ def extinction(json):
     else:
         if flag:
             caches[roomId].properties = copy.deepcopy(copied)
+            
             _nextTurn(roomId)
 
 def quickMove(json):
@@ -407,6 +417,8 @@ def quirkOfFate(json):
 def pickChance(json):
     loaded = json
     roomId = str(loaded["roomId"])
+    caches[roomId].prompt = CellPromptType.none
+    caches[roomId].commitGameState(None,io)
     caches[roomId].getChance(io)
 
 

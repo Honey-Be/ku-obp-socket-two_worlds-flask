@@ -301,6 +301,7 @@ class CellPromptType(Enum):
     quirkOfFate = "quirkOfFate"
     sell = "sell"
     pickChance = "pickChance"
+    normal = "normal"
 
 class GameCache:
     def __init__(self, roomId: str, metadata: PlayerMetadataSet, player_states: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doubles_count: int, remainingCatastropheTurns: int, remainingPandemicTurns: int, lottoSuccess: int, prompt: CellPromptType, usingDoubleLotto: bool = False, paymentChoicesCache: Sequence[AbstractPaymentType] = [], usePaymentChoicesCache: bool = False, duringMaintenance: bool = False, chanceCardDisplay: str = ""):
@@ -484,9 +485,9 @@ class GameCache:
         playerEmails: list[str] = self.metadata.getPlayerEmailsList()
         isEnded: bool = self.metadata.isEnded
         if io is not None:
-            io.emit("notifyRoomStatus", (JSON.dumps(playerEmails), JSON.dumps(isEnded)), to=self.roomId, include_self=True)
+            io.emit("notifyRoomStatus", (playerEmails, JSON.dumps(isEnded)), to=self.roomId, include_self=True)
         else:
-            emit("notifyRoomStatus", (JSON.dumps(playerEmails), JSON.dumps(isEnded)), broadcast=False)
+            emit("notifyRoomStatus", (playerEmails, JSON.dumps(isEnded)), broadcast=False)
         
     def endGame(self, io: SocketIO):
         self.metadata.isEnded = True
@@ -554,8 +555,10 @@ class GameCache:
                     playersCount = 3
                 nextInTurn: Literal[0,1,2,3] = (prevInTurn + 1 + skip) % playersCount
                 self.nowInTurn = PlayerIconType(nextInTurn)
-                if PREDEFINED_CELLS[self.playerStates[nextInTurn].location % 54].cell_type == CellType.jail:
+                if PREDEFINED_CELLS[self.playerStates[nextInTurn].location % 54].cell_type == CellType.jail and self.playerStates[nextInTurn].remainingJailTurns > 0:
                     self.prompt = CellPromptType.jail
+                else:
+                    self.prompt = CellPromptType.normal
                 return False
 
     def tryJailExit(self, dices: DiceType, thanksToLawyer: bool = False) -> bool:
@@ -993,6 +996,11 @@ class GameCache:
 
 
     def sellForDebt(self, target_location: int, amount: int, io: SocketIO):
+        if (target_location % 54) not in self.properties.keys():
+            return
+        elif self.properties[target_location % 54].ownerIcon != self.nowInTurn:
+            return
+
         sell_amount = min(self.properties[target_location % 54].count, amount)
         amount_after = self.properties[target_location % 54].count - sell_amount
         self.properties[target_location % 54].count = amount_after
@@ -1010,15 +1018,14 @@ class GameCache:
                 after = self.playerStates[self.nowInTurn.value].cash - calculated
                 self.playerStates[self.nowInTurn.value].cash = after
                 self.prompt = CellPromptType.none
-        elif self.properties[target_location % 54].ownerIcon == self.nowInTurn:
-            if cash_after > 0:
-                if self._usePaymentChoicesCache:
-                    payment_choices = copy.deepcopy(self._paymentChoicesCache)
-                    self._paymentChoicesCache = []
-                    self.checkActions(io, payment_choices)
-                self.commitGameState(None, io)
-                self._usePaymentChoicesCache = False
-                self.prompt = CellPromptType.none
+        elif cash_after > 0:
+            if self._usePaymentChoicesCache:
+                payment_choices = copy.deepcopy(self._paymentChoicesCache)
+                self._paymentChoicesCache = []
+                self.checkActions(io, payment_choices)
+            self.commitGameState(None, io)
+            self._usePaymentChoicesCache = False
+            self.prompt = CellPromptType.none
                 
     
 
