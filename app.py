@@ -416,6 +416,7 @@ def pickChance(json):
 @io.on("connect")
 def connect(sid, environ):
     print(f"{sid} is connected.")
+    print(f"environ: {environ}")
 
     io.on_event("reportNormalTurnDice", reportNormalTurnDIce)    
     io.on_event("sellForDebt", sellForDebt)
