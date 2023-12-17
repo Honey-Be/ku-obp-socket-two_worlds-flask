@@ -2,7 +2,6 @@ from copy import deepcopy
 from functools import cache
 from math import floor
 from time import sleep
-from tkinter.filedialog import LoadFileDialog
 import flask
 
 import flask_socketio
