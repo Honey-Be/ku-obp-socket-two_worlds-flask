@@ -1,8 +1,10 @@
 from enum import Enum
 from dataclasses import dataclass
-from typing import NamedTuple, Literal, TypeVar, Generic, override, Union, Self, Optional, Iterable
+from typing import Any, NamedTuple, Literal, TypeVar, Generic, override, Union, Self, Optional, Iterable
 from abc import ABCMeta, abstractmethod
 from functools import reduce
+
+import json as JSON
 
 import copy
 
@@ -65,7 +67,15 @@ class TicketsType:
     @freeHospital.setter
     def freeHospital(self, value: int): self._freeHospital = value
 
-
+    def encodeToJson(self) -> dict[str, Any]:
+        return {
+            "feeExemption": self.feeExemption,
+            "taxExemption": self.taxExemption,
+            "bonus": self.bonus,
+            "doubleLotto": self.doubleLotto,
+            "lawyer": self.lawyer,
+            "freeHospital": self.freeHospital
+        }
 
         
 class PlayerIconType(Enum):
@@ -180,6 +190,19 @@ class PlayerType:
         self.university: UniversityStateType = university
         self.tickets: TicketsType = tickets
         self.remainingJailTurns: int = remainingJailTurns
+
+    def encodeToJson(self) -> dict[str, Any]:
+        return {
+            "icon": self.icon.value,
+            "location": self.location,
+            "displayLocation": self.displayLocation,
+            "cash": self.cash,
+            "cycles": self.cycles,
+            "university": self.university.value,
+            "tickets": self.tickets.encodeToJson(),
+            "remainingJailTurns": self.remainingJailTurns
+        }
+        
 
 @dataclass
 class PropertyType:
@@ -449,3 +472,30 @@ class MarketGovTransactor(AbstractTransactor[MarketGovPaymentKind]):
         else:
             return PaymentTransaction.fromArray([],payment.cost,0)
         
+
+class GameStateJSONEncoder(JSON.JSONEncoder):
+    def default(self, o: GameStateType) -> dict[str, Any]:
+        _roomId: str = o.roomId
+        _playerStates_orig: list[PlayerType] = copy.deepcopy(o.playerStates)
+        _playerStates = list(map(PlayerType.encodeToJson,_playerStates_orig))
+        _properties_orig: dict[int,PropertyType] = copy.deepcopy(o.properties)
+        _properties = dict(map(lambda o: (str(o[0]), o[1].__dict__),_properties_orig.items()))
+        _nowInTurn: PlayerIconType = o.nowInTurn
+        _govIncome: int = o.govIncome
+        _charityIncome: int = o.charityIncome
+        _diceCache: DiceType = o.diceCache
+        _doublesCount: int = o.doublesCount
+        _remainingCatastropheTurns: int = o.remainingCatastropheTurns
+        _remainingPandemicTurns: int = o.remainingPandemicTurns
+        return {
+            "roomId": _roomId,
+            "playerStates": _playerStates,
+            "properties": _properties,
+            "nowInTurn": _nowInTurn.value,
+            "govIncome": _govIncome,
+            "charityIncome": _charityIncome,
+            "diceCache": _diceCache.value,
+            "doublesCount": _doublesCount,
+            "remainingCatastropheTurns": _remainingCatastropheTurns,
+            "remainingPandemicTurns": _remainingPandemicTurns,
+        }
