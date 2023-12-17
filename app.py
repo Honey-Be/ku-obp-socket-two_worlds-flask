@@ -119,12 +119,12 @@ def joinRoom(json):
 
     if roomId in caches.keys():
         flask_socketio.join_room(roomId)
-        io.emit("joinSucceed")
+        emit("joinSucceed", broadcast=False)
         cache = caches[roomId]
         cache.notifyLoad()
 
     else:
-        io.emit("joinFailed", {"msg": "invalid room"})
+        emit("joinFailed", {"msg": "invalid room"}, broadcast=False)
 
 
 def randomDice() -> tuple[Literal[1,2,3,4,5,6], Literal[1,2,3,4,5,6]]:
@@ -163,7 +163,7 @@ def _nextTurn(roomId: str, jailbreak: bool = False):
     isdouble = caches[roomId].isDouble() and not jailbreak
     triggerEndGame = caches[roomId].tryNextTurn(isdouble, io)
     caches[roomId].commitGameState(None,io)
-    io.emit("eraseQuirkOfFateStatus")
+    io.emit("eraseQuirkOfFateStatus",to=roomId,include_self=True)
     if triggerEndGame:
         caches[roomId].endGame(io)
 
@@ -362,7 +362,7 @@ def quirkOfFate(json):
     roomId = str(loaded["roomId"])
 
     (dice1, dice2) = randomDice()
-    io.emit("showQuirkOfFateStatus", dice1, dice2)
+    io.emit("showQuirkOfFateStatus", JSON.dumps(dice1), JSON.dumps(dice2))
 
     l = len(caches[roomId].playerStates)
 

@@ -453,8 +453,8 @@ class GameCache:
         state: GameStateType = self.gameState
         payload = JSON.dumps(state)
         io.emit("updateGameState",payload,to=self.roomId,include_self=True)
-        io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
-        io.emit("updatePrompt",self.prompt.value,to=self.roomId,include_self=True)
+        io.emit("updateChanceCardDisplay", JSON.dumps(self.chanceCardDisplay), to=self.roomId,include_self=True)
+        io.emit("updatePrompt",JSON.dumps(self.prompt.value),to=self.roomId,include_self=True)
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
         if state is not None:
@@ -484,9 +484,9 @@ class GameCache:
         playerEmails: list[str] = self.metadata.getPlayerEmailsList()
         isEnded: bool = self.metadata.isEnded
         if io is not None:
-            io.emit("notifyRoomStatus", playerEmails, isEnded, to=self.roomId, include_self=True)
+            io.emit("notifyRoomStatus", JSON.dumps(playerEmails), JSON.dumps(isEnded), to=self.roomId, include_self=True)
         else:
-            emit("notifyRoomStatus", playerEmails, isEnded, broadcast=False)
+            emit("notifyRoomStatus", JSON.dumps(playerEmails), JSON.dumps(isEnded), broadcast=False)
         
     def endGame(self, io: SocketIO):
         self.metadata.isEnded = True
@@ -498,10 +498,10 @@ class GameCache:
     def notifyLoad(self) -> None:
         self.notifyRoomStatus(None)
         gameState: GameStateType = copy.deepcopy(self.gameState)
-        emit("updateGameState",gameState,broadcast=False)
-        emit("updateDoublesCount",self.doublesCount,broadcast=False)
-        emit("showDices",self.diceCache.value,broadcast=False)
-        emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
+        emit("updateGameState",JSON.dumps(gameState),broadcast=False)
+        emit("updateDoublesCount",JSON.dumps(self.doublesCount),broadcast=False)
+        emit("showDices",JSON.dumps(self.diceCache.value),broadcast=False)
+        emit("updateChanceCardDisplay", JSON.dumps(self.chanceCardDisplay), broadcast=False)
 
     def flushDices(self, io: SocketIO, new_doubles_count: int):
         self.diceCache = DiceType.Null
@@ -510,7 +510,7 @@ class GameCache:
 
     def reportDices(self, dice1: Literal[1,2,3,4,5,6], dice2: Literal[1,2,3,4,5,6], io: SocketIO):
         self.diceCache = DICE_REVERSE_LOOKUP[(dice1, dice2)]
-        io.emit("showDices", self.diceCache.value, to=self.roomId)
+        io.emit("showDices", JSON.dumps(self.diceCache.value), to=self.roomId)
         
     def _garbageCollection(self):
         cellIds = copy.deepcopy(self.properties.keys())
