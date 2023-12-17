@@ -114,7 +114,7 @@ def create():
 
 @io.on("joinRoom")
 def joinRoom(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
 
     if roomId in caches.keys():
@@ -138,7 +138,7 @@ def randomDice() -> tuple[Literal[1,2,3,4,5,6], Literal[1,2,3,4,5,6]]:
 
 
 def reportNormalTurnDIce(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     
     (dice1, dice2) = randomDice()
@@ -150,7 +150,7 @@ def reportNormalTurnDIce(json):
 
 
 def sellForDebt(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     targetLocation = int(loaded["targetLocation"])
     amount = int(loaded["amount"])
@@ -192,7 +192,7 @@ def _calculateLottoRewards(roomId: str, final_result: int):
     caches[roomId].lottoSuccess = 0
 
 def tryLotto(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     
     nowInTurn = caches[roomId].nowInTurn
@@ -216,7 +216,7 @@ def tryLotto(json):
         
 
 def purchase(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     amount = min(3,max(1,int(loaded["amount"])))
     nowInTurn = caches[roomId].nowInTurn
@@ -255,7 +255,7 @@ def purchase(json):
 
 
 def tryJailExitByDice(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
 
     (dice1, dice2) = randomDice()
@@ -267,21 +267,21 @@ def tryJailExitByDice(json):
     caches[roomId].tryJailExit(dices)
 
 def jailExitThanksToLawyer(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
 
     caches[roomId].tryJailExit(DiceType.Null,True)
 
 
 def jailExitByCash(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
 
     caches[roomId].tryJailExit(DiceType.Null,False)
 
 
 def trafficJam(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     target = int(loaded["target"]) % 54
 
@@ -293,7 +293,7 @@ def trafficJam(json):
 
 
 def trade(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     toGive = int(loaded["toGive"]) % 54
     toGet = int(loaded["toGet"]) % 54
@@ -309,7 +309,7 @@ def trade(json):
         _nextTurn(roomId)
 
 def extinction(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     targetGroup = int(loaded["targetGroup"])
 
@@ -329,7 +329,7 @@ def extinction(json):
             _nextTurn(roomId)
 
 def quickMove(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     dest = int(loaded["dest"])
 
@@ -345,7 +345,7 @@ def quickMove(json):
 
 
 def greenNewDeal(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     target = int(loaded["target"])
 
@@ -360,7 +360,7 @@ def greenNewDeal(json):
             
 
 def quirkOfFate(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
 
     (dice1, dice2) = randomDice()
@@ -404,7 +404,7 @@ def quirkOfFate(json):
     
 
 def pickChance(json):
-    loaded = JSON.loads(json)
+    loaded = json
     roomId = str(loaded["roomId"])
     caches[roomId].getChance(io)
 
