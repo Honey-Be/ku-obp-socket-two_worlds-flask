@@ -1,7 +1,6 @@
 from hmac import new
 from math import ceil, sqrt
 import math
-from msilib.schema import Property
 from operator import concat
 from os import write
 from time import sleep
