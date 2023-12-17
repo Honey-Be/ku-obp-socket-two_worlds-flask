@@ -53,11 +53,9 @@ flask_cors.CORS(app,origins=[
 
 
 io = flask_socketio.SocketIO(app,
-    cors_allowed_origins=[
-        "https://ku-obp.vercel.app",
-        "https://ku-obp-gamma.vercel.app",
-        "http://localhost:3000",
-    ],
+    cors_allowed_origins="*"
+    
+    
 )
 
 main = flask.Blueprint('main', __name__)
@@ -156,10 +154,12 @@ def sellForDebt(json):
 
 def _nextTurn(roomId: str, jailbreak: bool = False):
     caches[roomId].prompt = CellPromptType.none
+    caches[roomId].chanceCardDisplay = ""
     sleep(0.6)
     isdouble = caches[roomId].isDouble() and not jailbreak
     triggerEndGame = caches[roomId].tryNextTurn(isdouble, io)
     caches[roomId].commitGameState(None,io)
+    io.emit("eraseQuirkOfFateStatus")
     if triggerEndGame:
         caches[roomId].endGame(io)
 
@@ -400,6 +400,7 @@ def quirkOfFate(json):
 def pickChance(json):
     loaded = JSON.loads(json)
     roomId = str(loaded["roomId"])
+    caches[roomId].getChance(io)
 
 
 

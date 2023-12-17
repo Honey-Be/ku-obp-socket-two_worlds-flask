@@ -303,7 +303,7 @@ class CellPromptType(Enum):
     pickChance = "pickChance"
 
 class GameCache:
-    def __init__(self, roomId: str, metadata: PlayerMetadataSet, player_states: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doubles_count: int, remainingCatastropheTurns: int, remainingPandemicTurns: int, lottoSuccess: int, prompt: CellPromptType, usingDoubleLotto: bool = False, paymentChoicesCache: Sequence[AbstractPaymentType] = [], usePaymentChoicesCache: bool = False, duringMaintenance: bool = False):
+    def __init__(self, roomId: str, metadata: PlayerMetadataSet, player_states: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doubles_count: int, remainingCatastropheTurns: int, remainingPandemicTurns: int, lottoSuccess: int, prompt: CellPromptType, usingDoubleLotto: bool = False, paymentChoicesCache: Sequence[AbstractPaymentType] = [], usePaymentChoicesCache: bool = False, duringMaintenance: bool = False, chanceCardDisplay: str = ""):
         self._roomId: str = copy.deepcopy(roomId)
         self._metadata: PlayerMetadataSet = copy.deepcopy(metadata)
         self._player_states: list[PlayerType] = copy.deepcopy(player_states)
@@ -321,6 +321,7 @@ class GameCache:
         self._paymentChoicesCache: Sequence[AbstractPaymentType] = paymentChoicesCache
         self._usePaymentChoicesCache: bool = usePaymentChoicesCache
         self._duringMaintenance: bool = duringMaintenance
+        self._chanceCardDisplay: str = copy.deepcopy(chanceCardDisplay)
 
     @classmethod
     def initialize(cls, roomId: str, hostEmail: str, first_guestEmail: str, max_guests: Literal[1,2,3] = 3, shuffles: bool = False, *other_guestEmails: str):
@@ -441,10 +442,18 @@ class GameCache:
             remainingCatastropheTurns=self.remainingCatastropheTurns)
         return output
     
+    @property
+    def chanceCardDisplay(self) -> str: return self._chanceCardDisplay
+
+    @chanceCardDisplay.setter
+    def chanceCardDisplay(self, value: str): self._chanceCardDisplay = value
+
+
     def updateGameState(self, io: SocketIO) -> None:
         state: GameStateType = self.gameState
         payload = JSON.dumps(state)
         io.emit("updateGameState",payload,to=self.roomId,include_self=True)
+        io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
         io.emit("updatePrompt",self.prompt.value,to=self.roomId,include_self=True)
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
@@ -492,6 +501,7 @@ class GameCache:
         emit("updateGameState",gameState,broadcast=False)
         emit("updateDoublesCount",self.doublesCount,broadcast=False)
         emit("showDices",self.diceCache.value,broadcast=False)
+        emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
 
     def flushDices(self, io: SocketIO, new_doubles_count: int):
         self.diceCache = DiceType.Null
@@ -793,6 +803,7 @@ class GameCache:
 
         if PREDEFINED_CELLS[src].cell_type == CellType.chance:
             picked = choice(list(CHANCE_CARDS))
+            self.chanceCardDisplay = copy.deepcopy(picked)
             if picked == "newborn":
                 self._chance_newborn()
             elif picked == "earthquake":
@@ -864,7 +875,7 @@ class GameCache:
             elif picked == "trade":
                 self._chance_trade(io)
             else:
-                return
+                self.chanceCardDisplay = ""
                 
     def checkActions(self, io: SocketIO, payment_choices: Sequence[AbstractPaymentType]) -> bool:
         location = self.playerStates[self.nowInTurn.value].location
