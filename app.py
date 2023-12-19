@@ -409,7 +409,7 @@ def quirkOfFate(json):
             caches[roomId].playerStates[nowInTurn.value].cash
         )
 
-    _nextTurn(roomId)
+        _nextTurn(roomId)
 
 
     
