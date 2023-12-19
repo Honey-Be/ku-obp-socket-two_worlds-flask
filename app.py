@@ -176,17 +176,22 @@ def lotto(judge: Callable[[Eisenstein], bool]) -> bool:
     x = Eisenstein(a,b)
     return judge(x)
 
-def _calculateLottoRewards(roomId: str, final_result: int):
+def _calculateLottoRewards(roomId: str, final_result: int, doubles: bool):
     nowInTurn = caches[roomId].nowInTurn
     if final_result >= 3:
-        reward: int = 2000000
+        _reward: int = 2000000
     elif final_result == 2:
-        reward: int = 1000000
+        _reward: int = 1000000
     elif final_result == 1:
-        reward: int = 500000
+        _reward: int = 500000
     else:
-        reward: int = 0
+        _reward: int = 0
     
+    if doubles:
+        reward = _reward * 2
+    else:
+        reward = _reward
+
     after = caches[roomId].playerStates[nowInTurn.value].cash + reward
     caches[roomId].playerStates[nowInTurn.value].cash = after
 
@@ -195,17 +200,21 @@ def _calculateLottoRewards(roomId: str, final_result: int):
 def tryLotto(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    
+    _usingDoubleLotto = str(loaded["usingDoubleLotto"])
+    usingDoubleLotto = (_usingDoubleLotto == "true")
+    flagDoubleLotto = caches[roomId].usingDoubleLotto or usingDoubleLotto
+    caches[roomId].usingDoubleLotto = flagDoubleLotto
+
     nowInTurn = caches[roomId].nowInTurn
     beforeCash = caches[roomId].playerStates[nowInTurn.value].cash
     if beforeCash >= 200000:
         caches[roomId].playerStates[nowInTurn.value].cash = max(0,beforeCash - 200000)
-    
+
         before = max(0,caches[roomId].lottoSuccess)
         judgement = lotto(Eisenstein.isPrime)
         if judgement:
             if (before >= 2) or (caches[roomId].playerStates[nowInTurn.value].cash < 200000):
-                _calculateLottoRewards(roomId,3)
+                _calculateLottoRewards(roomId,3, caches[roomId].usingDoubleLotto)
                 _nextTurn(roomId)
             else:
                 caches[roomId].lottoSuccess = before + 1
