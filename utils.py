@@ -452,7 +452,7 @@ class GameCache:
 
     def updateGameState(self, io: SocketIO) -> None:
         state: GameStateType = self.gameState
-        payload = JSON.dumps(state, cls=GameStateJSONEncoder)
+        payload = JSON.dumps(state.__dict__, default=lambda o: o.__dict__)
         io.emit("updateGameState",payload,to=self.roomId,include_self=True)
         io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
         io.emit("updatePrompt",str(self.prompt.value),to=self.roomId,include_self=True)
