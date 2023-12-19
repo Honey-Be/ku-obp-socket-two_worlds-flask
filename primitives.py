@@ -476,35 +476,35 @@ class MarketGovTransactor(AbstractTransactor[MarketGovPaymentKind]):
 
 def _augmentCellId(item: tuple[int, PropertyType]) -> dict[str, Any]:
     (cellId, prop) = item
-    d = copy.deepcopy(prop.__dict__)
-    d["cellId"] = cellId
-    return copy.deepcopy(d)
+    return {
+        "ownerIcon": prop.ownerIcon.value,
+        "count": prop.count,
+        "cellId": cellId
+    }
 
 class GameStateJSONEncoder(JSON.JSONEncoder):
     def default(self, o: GameStateType) -> dict[str, Any]:
-        return o.__dict__
-
-        # _roomId: str = o.roomId
-        # _playerStates_orig: list[PlayerType] = copy.deepcopy(o.playerStates)
-        # _playerStates = list(map(PlayerType.encodeToJson,_playerStates_orig))
-        # _properties_orig: dict[int,PropertyType] = copy.deepcopy(o.properties)
-        # _properties = list(map(_augmentCellId,_properties_orig.items()))
-        # _nowInTurn: PlayerIconType = o.nowInTurn
-        # _govIncome: int = o.govIncome
-        # _charityIncome: int = o.charityIncome
-        # _diceCache: DiceType = o.diceCache
-        # _doublesCount: int = o.doublesCount
-        # _remainingCatastropheTurns: int = o.remainingCatastropheTurns
-        # _remainingPandemicTurns: int = o.remainingPandemicTurns
-        # return {
-        #     "roomId": _roomId,
-        #     "playerStates": _playerStates,
-        #     "properties": _properties,
-        #     "nowInTurn": _nowInTurn.value,
-        #     "govIncome": _govIncome,
-        #     "charityIncome": _charityIncome,
-        #     "diceCache": _diceCache.value,
-        #     "doublesCount": _doublesCount,
-        #     "remainingCatastropheTurns": _remainingCatastropheTurns,
-        #     "remainingPandemicTurns": _remainingPandemicTurns,
-        # }
+        roomId: str = o.roomId
+        playerStates_orig: list[PlayerType] = copy.deepcopy(o.playerStates)
+        playerStates = list(map(PlayerType.encodeToJson,playerStates_orig))
+        properties_orig: dict[int,PropertyType] = copy.deepcopy(o.properties)
+        properties = list(map(_augmentCellId,properties_orig.items()))
+        nowInTurn: PlayerIconType = o.nowInTurn
+        govIncome: int = o.govIncome
+        charityIncome: int = o.charityIncome
+        diceCache: DiceType = o.diceCache
+        doublesCount: int = o.doublesCount
+        remainingCatastropheTurns: int = o.remainingCatastropheTurns
+        remainingPandemicTurns: int = o.remainingPandemicTurns
+        return {
+            "roomId": roomId,
+            "playerStates": playerStates,
+            "properties": properties,
+            "nowInTurn": nowInTurn.value,
+            "govIncome": govIncome,
+            "charityIncome": charityIncome,
+            "diceCache": diceCache.value,
+            "doublesCount": doublesCount,
+            "remainingCatastropheTurns": remainingCatastropheTurns,
+            "remainingPandemicTurns": remainingPandemicTurns,
+        }
