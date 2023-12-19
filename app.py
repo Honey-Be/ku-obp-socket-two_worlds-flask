@@ -264,6 +264,12 @@ def purchase(json):
     
     _nextTurn(roomId)
 
+def skip(json):
+    loaded = json
+    roomId = str(loaded["roomId"])
+    
+    _nextTurn(roomId)
+
 
 def tryJailExitByDice(json):
     loaded = json
