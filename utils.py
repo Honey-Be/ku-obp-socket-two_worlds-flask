@@ -284,7 +284,11 @@ def serializeProperty(property: PropertyType) -> JSONType:
     }
 
 
-
+class PropertySerialized:
+    def __init__(self, cellId: int, ownerIcon: int, count: int):
+        self.cellId: int = cellId
+        self.ownerIcon: int = ownerIcon
+        self.count: int = count
 
     
 
@@ -452,8 +456,14 @@ class GameCache:
 
     def updateGameState(self, io: SocketIO) -> None:
         state: GameStateType = self.gameState
-        payload = JSON.dumps(state.__dict__, default=lambda o: o.__dict__)
-        io.emit("updateGameState",payload,to=self.roomId,include_self=True)
+        playerStates = state.playerStates
+        properties = list(map(lambda p: PropertySerialized(p[0],p[1].ownerIcon.value,p[1].count),state.properties.items())),
+        nowInTurn = state.nowInTurn
+        govIncome = state.govIncome
+        charityIncome = state.charityIncome
+        remainingCatastropheTurns = state.remainingCatastropheTurns
+        remainingPandemicTurns = state.remainingPandemicTurns
+        io.emit("updateGameState",(JSON.dumps(playerStates.__dict__, default=lambda o: o.__dict__),JSON.dumps(properties.__dict__, default=lambda o: o.__dict__),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns),to=self.roomId,include_self=True)
         io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
         io.emit("updatePrompt",str(self.prompt.value),to=self.roomId,include_self=True)
 
@@ -498,9 +508,16 @@ class GameCache:
 
     def notifyLoad(self) -> None:
         self.notifyRoomStatus(None)
-        gameStatePayload = JSON.dumps(self.gameState, cls=GameStateJSONEncoder)
-        print(f"\n\n\n{gameStatePayload}\n\n\n")
-        emit("updateGameState",gameStatePayload,broadcast=False)
+        state = self.gameState
+        print(f"\n\n\n{state}\n\n\n")
+        playerStates = state.playerStates
+        properties = list(map(lambda p: PropertySerialized(p[0],p[1].ownerIcon.value,p[1].count),state.properties.items())),
+        nowInTurn = state.nowInTurn
+        govIncome = state.govIncome
+        charityIncome = state.charityIncome
+        remainingCatastropheTurns = state.remainingCatastropheTurns
+        remainingPandemicTurns = state.remainingPandemicTurns
+        emit("updateGameState",(JSON.dumps(playerStates.__dict__, default=lambda o: o.__dict__),JSON.dumps(properties.__dict__, default=lambda o: o.__dict__),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns), broadcast=False)       
         emit("updateDoublesCount",self.doublesCount,broadcast=False)
         emit("showDices",int(self.diceCache.value),broadcast=False)
         emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
