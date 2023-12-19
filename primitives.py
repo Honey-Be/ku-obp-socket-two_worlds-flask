@@ -482,27 +482,29 @@ def _augmentCellId(item: tuple[int, PropertyType]) -> dict[str, Any]:
 
 class GameStateJSONEncoder(JSON.JSONEncoder):
     def default(self, o: GameStateType) -> dict[str, Any]:
-        _roomId: str = o.roomId
-        _playerStates_orig: list[PlayerType] = copy.deepcopy(o.playerStates)
-        _playerStates = list(map(PlayerType.encodeToJson,_playerStates_orig))
-        _properties_orig: dict[int,PropertyType] = copy.deepcopy(o.properties)
-        _properties = list(map(_augmentCellId,_properties_orig.items()))
-        _nowInTurn: PlayerIconType = o.nowInTurn
-        _govIncome: int = o.govIncome
-        _charityIncome: int = o.charityIncome
-        _diceCache: DiceType = o.diceCache
-        _doublesCount: int = o.doublesCount
-        _remainingCatastropheTurns: int = o.remainingCatastropheTurns
-        _remainingPandemicTurns: int = o.remainingPandemicTurns
-        return {
-            "roomId": _roomId,
-            "playerStates": _playerStates,
-            "properties": _properties,
-            "nowInTurn": _nowInTurn.value,
-            "govIncome": _govIncome,
-            "charityIncome": _charityIncome,
-            "diceCache": _diceCache.value,
-            "doublesCount": _doublesCount,
-            "remainingCatastropheTurns": _remainingCatastropheTurns,
-            "remainingPandemicTurns": _remainingPandemicTurns,
-        }
+        return o.__dict__
+
+        # _roomId: str = o.roomId
+        # _playerStates_orig: list[PlayerType] = copy.deepcopy(o.playerStates)
+        # _playerStates = list(map(PlayerType.encodeToJson,_playerStates_orig))
+        # _properties_orig: dict[int,PropertyType] = copy.deepcopy(o.properties)
+        # _properties = list(map(_augmentCellId,_properties_orig.items()))
+        # _nowInTurn: PlayerIconType = o.nowInTurn
+        # _govIncome: int = o.govIncome
+        # _charityIncome: int = o.charityIncome
+        # _diceCache: DiceType = o.diceCache
+        # _doublesCount: int = o.doublesCount
+        # _remainingCatastropheTurns: int = o.remainingCatastropheTurns
+        # _remainingPandemicTurns: int = o.remainingPandemicTurns
+        # return {
+        #     "roomId": _roomId,
+        #     "playerStates": _playerStates,
+        #     "properties": _properties,
+        #     "nowInTurn": _nowInTurn.value,
+        #     "govIncome": _govIncome,
+        #     "charityIncome": _charityIncome,
+        #     "diceCache": _diceCache.value,
+        #     "doublesCount": _doublesCount,
+        #     "remainingCatastropheTurns": _remainingCatastropheTurns,
+        #     "remainingPandemicTurns": _remainingPandemicTurns,
+        # }
