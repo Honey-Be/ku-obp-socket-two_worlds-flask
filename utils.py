@@ -652,33 +652,43 @@ class GameCache:
     def _chance_newborn(self): # 출산 ㅊㅋㅊㅋ : 시장으로부터 100만 받음
         after = self.playerStates[self.nowInTurn.value].cash + 1000000
         self.playerStates[self.nowInTurn.value].cash = after
+        return True
 
     def _chance_earthquake(self): # 지진 : 자신의 집이 있는 모든 도시에 집 한채씩 파괴됩니다.
         self._propertiesFilterForEach(lambda pair: pair[1].ownerIcon == self.nowInTurn,
                                       lambda prop: PropertyType(prop.ownerIcon,max(0,prop.count - 1)))
+        self._garbageCollection()
+        return True
 
     def _chance_tax_heaven(self, io: SocketIO): # 조세회피처 [감옥으로 워프]
         self.warp(9,io,True)
+        return True
 
     def _chance_disease(self, io: SocketIO): # 병원행 [병원으로 워프]
         self.warp(45,io,True)
+        return True
 
     def _chance_emergency_aid(self, io: SocketIO): # 긴급의료비 지원 (병원비 1회 무료) [티켓]
         after = self.playerStates[self.nowInTurn.value].tickets.freeHospital + 1
         self.playerStates[self.nowInTurn.value].tickets.freeHospital = after
+        return True
 
     def _chance_drug(self, io: SocketIO): # 마약 소지 적발 [감옥으로 워프]
         self.warp(9,io,True)
+        return True
 
     def _chance_nursing(self, io: SocketIO): # 부모님 간호 [병원으로 워프]
         self.warp(45,io,True)
+        return True
 
     def _chance_quirk_of_fate(self, io: SocketIO): # 운명의 장난 [주사위 굴리기 프롬프트]
         self.prompt = CellPromptType.quirkOfFate
+        return True
 
     def _chance_inherit_get(self, io: SocketIO): # 유산 상속 (100만 get)
         new_cash = self.playerStates[self.nowInTurn.value].cash + 1000000
         self.playerStates[self.nowInTurn.value].cash = new_cash
+        return True
     
     def _chance_inherit_donate(self, io: SocketIO): # 상속받은 유산 100만 기부
         after = self.playerStates[self.nowInTurn.value].cash - 1000000
@@ -687,14 +697,19 @@ class GameCache:
         if after < 0:
             self._trigger_sell(io,False)
 
+        return True
+
     def _chance_maintenance(self, io: SocketIO): # 건물 유지보수 (건물 한 채당 10만씩)
         calculated: Optional[int] = self._calculatePropertiesMaintenanceCost(lambda item: item[1].ownerIcon == self.nowInTurn)
         if calculated is None:
             self._trigger_sell(io,False,True)
+        return True
 
     def _chance_healthy(self, io: SocketIO): # 건강한 식습관 (병원비 1회 무료) [티켓]
         after = self.playerStates[self.nowInTurn.value].tickets.freeHospital + 1
         self.playerStates[self.nowInTurn.value].tickets.freeHospital = after
+
+        return True
 
     def _chance_cyber_security_threat(self, io: SocketIO): # 사이버 범죄 (시장에 100만 지불)
         after = self.playerStates[self.nowInTurn.value].cash - 1000000
@@ -702,6 +717,8 @@ class GameCache:
 
         if after < 0:
             self._trigger_sell(io,False)
+
+        return True
 
     def _chance_typhoon(self, io: SocketIO): # 태풍 : 해안 도시(목포, 강릉, 포항, 순천, 제주 , 울산, 인천, 부산, 창원, 서산, 순천, 여수)에 있는 건물이 한 채씩 파괴됩니다.
         for target in TYPHOON_TARGETS:
@@ -714,6 +731,8 @@ class GameCache:
         after = self.remainingPandemicTurns + len(self.playerStates)
         self.remainingPandemicTurns = after
 
+        return True
+
     def _chance_fake_news(self, io: SocketIO): # 가짜뉴스에 대항할 이미지 메이킹 (시장에 100만 지불)
         after = self.playerStates[self.nowInTurn.value].cash - 1000000
         self.playerStates[self.nowInTurn.value].cash =  after
@@ -721,9 +740,16 @@ class GameCache:
         if after < 0:
             self._trigger_sell(io,False)
 
-    def _chance_green_new_deal(self, io: SocketIO): # 그린뉴딜 : 자신의 건물이 지어진 도시 한 곳에 무료로 건물을 1채 더 짓습니다.
-        self.prompt = CellPromptType.greenNewDeal
+        return True
 
+    def _chance_green_new_deal(self, io: SocketIO): # 그린뉴딜 : 자신의 건물이 지어진 도시 한 곳에 무료로 건물을 1채 더 짓습니다.
+        filtered = list(filter(lambda p: p[1].ownerIcon == self.nowInTurn,self.properties.items()))
+        if len(filtered) > 0:
+            self.prompt = CellPromptType.greenNewDeal
+            return True
+        else:
+            return False
+        
     def _chance_voice_phishing(self, io: SocketIO): # 보이스피싱 (시장에 100만 지불)
         after = self.playerStates[self.nowInTurn.value].cash - 1000000
         self.playerStates[self.nowInTurn.value].cash =  after
@@ -731,33 +757,47 @@ class GameCache:
         if after < 0:
             self._trigger_sell(io,False)
 
+        return True
+
     def _chance_scholarship(self, io: SocketIO): # 장학금 [대학으로 워프]
         self.warp(18,io,True)
+        return True
 
     def _chance_catastrophe(self, io: SocketIO): # 긴급재난 발생 : 대도시(서울, 부산, 인천, 대구, 대전, 광주, 울산, 창원, 고양, 수원)에 긴급재난이 발생했습니다. [지역 한정 사이드카]
         after = self.remainingCatastropheTurns + len(self.playerStates)
         self.remainingCatastropheTurns = after
+        return True
 
     def _chance_fee_exemption(self, io: SocketIO): # 토지 및 건물 사용료 면제 [티켓]
         after = self.playerStates[self.nowInTurn.value].tickets.feeExemption + 1
         self.playerStates[self.nowInTurn.value].tickets.feeExemption = after
+        return True
 
     def _chance_bonus(self, io: SocketIO): # 보너스 지급 : 다음 차례 출발지 도착/경유 시 2배의 급여를 받습니다.
         after = self.playerStates[self.nowInTurn.value].tickets.bonus + 1
         self.playerStates[self.nowInTurn.value].tickets.bonus = after
+        return True
 
     def _chance_doubleLotto(self, io: SocketIO): # 더블 로또 [티켓]
         after = self.playerStates[self.nowInTurn.value].tickets.doubleLotto + 1
         self.playerStates[self.nowInTurn.value].tickets.doubleLotto = after
+        return True
 
     def _chance_insider_trading(self, io: SocketIO): # 내부자 거래 적발 [감옥으로 워프]
         self.warp(9,io,True)
+        return True
 
     def _chance_traffic_jam(self, io: SocketIO): # 교통체증 : 원하는 도시의 건물 한 채 제거
-        self.prompt = CellPromptType.trafficJam
+        filtered = list(filter(lambda p: p[1].ownerIcon != self.nowInTurn,self.properties.items()))
+        if len(filtered) > 0:
+            self.prompt = CellPromptType.trafficJam
+            return True
+        else:
+            return False
 
     def _chance_quick_move(self, io: SocketIO): # 원하는 곳으로 이동(워프 아님!!)
         self.prompt = CellPromptType.quickMove
+        return True
 
     def _chance_traffic_accident(self, io: SocketIO): # 교통사고 (시장에 50만 지불)
         after = self.playerStates[self.nowInTurn.value].cash - 500000
@@ -766,35 +806,53 @@ class GameCache:
         if after < 0:
             self._trigger_sell(io,False)
 
+        return True
+
     def _chance_tax_exemption(self, io: SocketIO): # 다음 차례 출발점 도착/경유 시 공과금(물, 전기, 도시가스) 면제
         after = self.playerStates[self.nowInTurn.value].tickets.taxExemption + 1
         self.playerStates[self.nowInTurn.value].tickets.taxExemption = after
+        return True
 
     def _chance_too_much_electrivity(self, io: SocketIO): # [전력회사로 워프]
         self.warp(16,io,True)
+        return True
 
     def _chance_lawyers_help(self, io: SocketIO): # 변호사 : 즉시 감옥에서 석방 [티켓]
         after = self.playerStates[self.nowInTurn.value].tickets.lawyer + 1
         self.playerStates[self.nowInTurn.value].tickets.lawyer = after
+        return True
 
     def _chance_soaring_stock_price(self, io: SocketIO): # 주식시장 급등 : 보유한 현금의 50%를 시장에서 받습니다. (현금 끝자리 5만일 경우 반올림)
         profit = round(self.playerStates[self.nowInTurn.value].cash / 2,-5)
         after = self.playerStates[self.nowInTurn.value].cash + profit
         self.playerStates[self.nowInTurn.value].cash = after
+        return True
 
     def _chance_plunge_in_stock_price(self, io: SocketIO): # 주식시장 급등 : 현금자산의 절반을 잃습니다. (시장에 지불, 현금 끝자리 5만일 경우 반올림)
         loss = round(self.playerStates[self.nowInTurn.value].cash / 2,-5)
         after = self.playerStates[self.nowInTurn.value].cash - loss
         self.playerStates[self.nowInTurn.value].cash = after
+        return True
 
     def _chance_studying_hard(self, io: SocketIO): # 주경야독으로 학위 취득 성공 : 즉시 졸업
-        self.playerStates[self.nowInTurn.value].university = UniversityStateType.graduated
+        if self.playerStates[self.nowInTurn.value].university != UniversityStateType.graduated:
+            self.playerStates[self.nowInTurn.value].university = UniversityStateType.graduated
+            return True
+        else:
+            return False
 
     def _chance_extinction(self, io: SocketIO): # 지방 소멸 : 한 그룹의 도시들을 선택합니다. 해당 그룹의 모든 도시에 있는 집을 1채 씩 없앱니다
         self.prompt = CellPromptType.extinction
+        return True
 
     def _chance_trade(self, io: SocketIO): # 도시 교환 : 자신의 도시 1개와 원하는 (상대방의) 도시 1개를 선택하여 통째로 맞교환합니다.
-        self.prompt = CellPromptType.trade
+        owners = set(map(lambda p: p[1].ownerIcon,self.properties.items()))
+        
+        if self.nowInTurn in owners and len(owners) > 1:
+            self.prompt = CellPromptType.trade
+            return True
+        else:
+            return False
 
     def _trigger_sell(self, io: SocketIO, usePatmentChoicesCache: bool, duringMaintenance: bool = False):
         self.prompt = CellPromptType.sell
@@ -806,80 +864,83 @@ class GameCache:
         src = (self.playerStates[self.nowInTurn.value].location) % 54
 
         if PREDEFINED_CELLS[src].cell_type == CellType.chance:
-            picked = choice(list(CHANCE_CARDS))
-            self.chanceCardDisplay = copy.deepcopy(picked)
-            if picked == "newborn":
-                self._chance_newborn()
-            elif picked == "earthquake":
-                self._chance_earthquake()
-            elif picked == "tax-heaven":
-                self._chance_tax_heaven(io)
-            elif picked == "disease":
-                self._chance_disease(io)
-            elif picked == "emergency-aid":
-                self._chance_emergency_aid(io)
-            elif picked == "drug":
-                self._chance_drug(io)
-            elif picked == "nursing":
-                self._chance_nursing (io)
-            elif picked == "quirk-of-fate":
-                self._chance_quirk_of_fate(io)
-            elif picked == "inherit-get":
-                self._chance_inherit_get(io)
-            elif picked == "inherit-donate":
-                self._chance_inherit_donate(io)
-            elif picked == "maintenance":
-                self._chance_maintenance(io)
-            elif picked == "healthy":
-                self._chance_healthy(io)
-            elif picked == "cyber-security-threat":
-                self._chance_cyber_security_threat(io)
-            elif picked == "Typhoon":
-                self._chance_typhoon(io)
-            elif picked == "pandemic":
-                self._chance_pandemic(io)
-            elif picked == "fake-news":
-                self._chance_fake_news(io)
-            elif picked == "green-new-deal":
-                self._chance_green_new_deal(io)
-            elif picked == "voice-phishing":
-                self._chance_voice_phishing(io)
-            elif picked == "scholarship":
-                self._chance_scholarship(io)
-            elif picked == "catastrophe":
-                self._chance_catastrophe(io)
-            elif picked == "fee-exemption":
-                self._chance_fee_exemption(io)
-            elif picked == "bonus":
-                self._chance_bonus(io)
-            elif picked == "doubleLotto":
-                self._chance_doubleLotto(io)
-            elif picked == "insider-trading":
-                self._chance_insider_trading(io)
-            elif picked == "traffic-jam":
-                self._chance_traffic_jam(io)
-            elif picked == "quick-move":
-                self._chance_quick_move(io)
-            elif picked == "traffic-accident":
-                self._chance_traffic_accident(io)
-            elif picked == "tax-exemption":
-                self._chance_tax_exemption(io)
-            elif picked == "too-much-electrivity":
-                self._chance_too_much_electrivity(io)
-            elif picked == "lawyers-help":
-                self._chance_lawyers_help(io)
-            elif picked == "soaring-stock-price":
-                self._chance_soaring_stock_price(io)
-            elif picked == "plunge-in-stock-price":
-                self._chance_plunge_in_stock_price(io)
-            elif picked == "studying-hard":
-                self._chance_studying_hard(io)
-            elif picked == "extinction":
-                self._chance_extinction(io)
-            elif picked == "trade":
-                self._chance_trade(io)
-            else:
-                self.chanceCardDisplay = ""
+            while True:
+                picked = choice(list(CHANCE_CARDS))
+                self.chanceCardDisplay = copy.deepcopy(picked)
+                if picked == "newborn":
+                    result = self._chance_newborn()
+                elif picked == "earthquake":
+                    result = self._chance_earthquake()
+                elif picked == "tax-heaven":
+                    result = self._chance_tax_heaven(io)
+                elif picked == "disease":
+                    result = self._chance_disease(io)
+                elif picked == "emergency-aid":
+                    result = self._chance_emergency_aid(io)
+                elif picked == "drug":
+                    result = self._chance_drug(io)
+                elif picked == "nursing":
+                    result = self._chance_nursing (io)
+                elif picked == "quirk-of-fate":
+                    result = self._chance_quirk_of_fate(io)
+                elif picked == "inherit-get":
+                    result = self._chance_inherit_get(io)
+                elif picked == "inherit-donate":
+                    result = self._chance_inherit_donate(io)
+                elif picked == "maintenance":
+                    result = self._chance_maintenance(io)
+                elif picked == "healthy":
+                    result = self._chance_healthy(io)
+                elif picked == "cyber-security-threat":
+                    result = self._chance_cyber_security_threat(io)
+                elif picked == "Typhoon":
+                    result = self._chance_typhoon(io)
+                elif picked == "pandemic":
+                    result = self._chance_pandemic(io)
+                elif picked == "fake-news":
+                    result = self._chance_fake_news(io)
+                elif picked == "green-new-deal":
+                    result = self._chance_green_new_deal(io)
+                elif picked == "voice-phishing":
+                    result = self._chance_voice_phishing(io)
+                elif picked == "scholarship":
+                    result = self._chance_scholarship(io)
+                elif picked == "catastrophe":
+                    result = self._chance_catastrophe(io)
+                elif picked == "fee-exemption":
+                    result = self._chance_fee_exemption(io)
+                elif picked == "bonus":
+                    result = self._chance_bonus(io)
+                elif picked == "doubleLotto":
+                    result = self._chance_doubleLotto(io)
+                elif picked == "insider-trading":
+                    result = self._chance_insider_trading(io)
+                elif picked == "traffic-jam":
+                    result = self._chance_traffic_jam(io)
+                elif picked == "quick-move":
+                    result = self._chance_quick_move(io)
+                elif picked == "traffic-accident":
+                    result = self._chance_traffic_accident(io)
+                elif picked == "tax-exemption":
+                    result = self._chance_tax_exemption(io)
+                elif picked == "too-much-electrivity":
+                    result = self._chance_too_much_electrivity(io)
+                elif picked == "lawyers-help":
+                    result = self._chance_lawyers_help(io)
+                elif picked == "soaring-stock-price":
+                    result = self._chance_soaring_stock_price(io)
+                elif picked == "plunge-in-stock-price":
+                    result = self._chance_plunge_in_stock_price(io)
+                elif picked == "studying-hard":
+                    result = self._chance_studying_hard(io)
+                elif picked == "extinction":
+                    result = self._chance_extinction(io)
+                elif picked == "trade":
+                    result = self._chance_trade(io)
+                else:
+                    result = False
+                if result:
+                    break
                 
     def checkActions(self, io: SocketIO, payment_choices: Sequence[AbstractPaymentType]) -> bool:
         location = self.playerStates[self.nowInTurn.value].location
