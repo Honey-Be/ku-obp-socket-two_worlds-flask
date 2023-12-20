@@ -7,7 +7,7 @@ from time import sleep
 from typing import AbstractSet, Any, Callable, Self, List, Sequence, overload
 
 from click import prompt
-from cells import AbstractCellData
+from cells import AbstractCellData, PREDEFINED_CELLS
 from collections import UserDict
 from collections.abc import MutableMapping
 
