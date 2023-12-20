@@ -167,7 +167,7 @@ class Land(AbstractCellData):
                 new_state = (merged_mandatory + merged_p2o * c).toAppliedState(state)
             else:
                 new_state = (merged_mandatory + merged_p2o).toAppliedState(state)
-            if state.properties[self.cellId].ownerIcon == player_now_icon and state.properties[self.cellId].count < PREDEFINED_CELLS[self.cellId].maxBuildable.value:
+            if state.properties[self.cellId].ownerIcon == player_now_icon and state.properties[self.cellId].count < self.maxBuildable.value:
                 return (new_state, self.optionalPaymentInfos)
             else:
                 return (new_state, [])

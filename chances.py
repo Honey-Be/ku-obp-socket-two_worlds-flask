@@ -1,4 +1,3 @@
-from cells import *
 from primitives import *
 from manager import *
 import random
