@@ -135,7 +135,9 @@ def reportNormalTurnDIce(json):
     (dice1, dice2) = randomDice()
     
     caches[roomId].reportDices(dice1, dice2, io)
-    caches[roomId].go((dice1+dice2),io)
+    finished = caches[roomId].go((dice1+dice2),io)
+    if finished:
+        _nextTurn(roomId)
 
 
 
@@ -273,7 +275,7 @@ def tryJailExitByDice(json):
 
     caches[roomId].tryJailExit(dices)
     
-    _nextTurn(roomId)
+    _nextTurn(roomId, jailbreak=True)
 
 def jailExitThanksToLawyer(json):
     loaded = json
