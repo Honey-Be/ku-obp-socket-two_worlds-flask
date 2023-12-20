@@ -275,18 +275,6 @@ class PlayerMetadataSet:
         return copy.deepcopy(list(map(lambda p: p.email, tmp)))
 
 
-class CellDictMerger:
-    def __init__(self, internal: dict[int,AbstractCellData] = {}):
-        self._internal: dict[int,AbstractCellData] = internal
-    def merge[C: AbstractCellData](self, d: dict[int,C]):
-        new_internal = copy.deepcopy(self._internal)
-        dkeys = filter(lambda key: key not in self._internal.keys(),d.keys())
-        for key in dkeys:
-            new_internal[key] = d[key]
-        return CellDictMerger(new_internal)
-    def extract(self):
-        return copy.deepcopy(self._internal)
-
 
 
 def serializePlayerMetadata(player_metadata: PlayerMetadataType) -> JSONType:

@@ -651,7 +651,17 @@ OTHERS: dict[int,AbstractCellData] = {
 }
 
 
-from utils import CellDictMerger
+class CellDictMerger:
+    def __init__(self, internal: dict[int,AbstractCellData] = {}):
+        self._internal: dict[int,AbstractCellData] = internal
+    def merge[C: AbstractCellData](self, d: dict[int,C]):
+        new_internal = copy.deepcopy(self._internal)
+        dkeys = filter(lambda key: key not in self._internal.keys(),d.keys())
+        for key in dkeys:
+            new_internal[key] = d[key]
+        return CellDictMerger(new_internal)
+    def extract(self):
+        return copy.deepcopy(self._internal)
 
 def gen_cells():
     items = list(CellDictMerger().merge(LANDS).merge(TRANSPORTATIONS).merge(CHANCES).merge(INFRASTRUCTURES_MAP).merge(INDUSTRIALS_MAP).merge(OTHERS).extract().items())
