@@ -434,6 +434,7 @@ def pickChance(json):
 @io.event
 def connect():
     io.on_event("reportNormalTurnDice", reportNormalTurnDIce)    
+    io.on_event("purchase", purchase)
     io.on_event("sellForDebt", sellForDebt)
 
     io.on_event("tryLotto", tryLotto)
