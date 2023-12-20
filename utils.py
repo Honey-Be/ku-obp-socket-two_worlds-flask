@@ -461,7 +461,7 @@ class GameCache:
 
     def _emitUpdateGameStateGlobally(self, io: SocketIO):
         payload_updatePlayerStates = [
-            JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__) for playerState in self.playerStates
+            JSON.dumps(playerState.__dict__) for playerState in self.playerStates
         ]
         io.emit("updatePlayerStates", payload_updatePlayerStates, to=self.roomId, include_self=True)
 
@@ -473,12 +473,12 @@ class GameCache:
 
     def _emitRefreshGameState(self):
         payload_updatePlayerStates = [
-            JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__) for playerState in self.playerStates
+            JSON.dumps(playerState.__dict__) for playerState in self.playerStates
         ]
         emit("updatePlayerStates", payload_updatePlayerStates, broadcast=False)
 
 
-        payload_updateProperties = { str(cellId): JSON.dumps(property.__dict__, default=lambda o: o.__dict__) for (cellId, property) in self.properties.items() }
+        payload_updateProperties = { str(cellId): JSON.dumps(property.__dict__) for (cellId, property) in self.properties.items() }
         emit("updateProperties", payload_updateProperties, broadcast=False)
         emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
 
