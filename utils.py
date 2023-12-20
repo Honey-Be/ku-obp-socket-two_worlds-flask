@@ -463,9 +463,32 @@ class GameCache:
         charityIncome = state.charityIncome
         remainingCatastropheTurns = state.remainingCatastropheTurns
         remainingPandemicTurns = state.remainingPandemicTurns
-        io.emit("updateGameState",(JSON.dumps(playerStates),JSON.dumps(properties),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns),to=self.roomId,include_self=True)
+        self._emitUpdateGameStateGlobally(io)
         io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
         io.emit("updatePrompt",str(self.prompt.value),to=self.roomId,include_self=True)
+
+    def _emitUpdateGameStateGlobally(self, io: SocketIO):
+        state = self.gameState
+        for (index, playerState) in enumerate(state.playerStates):
+            io.emit("updatePlayerState", (index, JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__)), to=self.roomId, include_self=True)
+        
+        keys = list(state.properties.keys())
+        io.emit("prepareUpdateProperties", JSON.dumps(keys), to=self.roomId, include_self=True)
+        for (cellId, property) in state.properties.items():
+            io.emit("updateProperties", (cellId, JSON.dumps(property.__dict__, default=lambda o: o.__dict__)), to=self.roomId, include_self=True)
+        io.emit("updateOtherStates", (state.nowInTurn, state.govIncome, state.charityIncome, state.remainingCatastropheTurns, state.remainingPandemicTurns), to=self.roomId, include_self=True)
+
+    def _emitUpdateGameState(self):
+        state = self.gameState
+        for (index, playerState) in enumerate(state.playerStates):
+            emit("updatePlayerState", (index, JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__)), broadcast=False)
+        
+        keys = list(state.properties.keys())
+        emit("prepareUpdateProperties", JSON.dumps(keys), broadcast=False)
+        for (cellId, property) in state.properties.items():
+            emit("updateProperties", (cellId, JSON.dumps(property.__dict__, default=lambda o: o.__dict__)), broadcast=False)
+        emit("updateOtherStates", (state.nowInTurn, state.govIncome, state.charityIncome, state.remainingCatastropheTurns, state.remainingPandemicTurns), broadcast=False)
+
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
         if state is not None:
@@ -517,7 +540,7 @@ class GameCache:
         charityIncome = state.charityIncome
         remainingCatastropheTurns = state.remainingCatastropheTurns
         remainingPandemicTurns = state.remainingPandemicTurns
-        emit("updateGameState",(JSON.dumps(playerStates),JSON.dumps(properties),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns), broadcast=False)       
+        self._emitUpdateGameState()
         emit("updateDoublesCount",self.doublesCount,broadcast=False)
         emit("showDices",int(self.diceCache.value),broadcast=False)
         emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
