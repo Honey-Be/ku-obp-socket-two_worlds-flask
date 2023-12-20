@@ -463,7 +463,7 @@ class GameCache:
         charityIncome = state.charityIncome
         remainingCatastropheTurns = state.remainingCatastropheTurns
         remainingPandemicTurns = state.remainingPandemicTurns
-        io.emit("updateGameState",(JSON.dumps(playerStates.__dict__, default=lambda o: o.__dict__),JSON.dumps(properties.__dict__, default=lambda o: o.__dict__),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns),to=self.roomId,include_self=True)
+        io.emit("updateGameState",(JSON.dumps(playerStates),JSON.dumps(properties),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns),to=self.roomId,include_self=True)
         io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
         io.emit("updatePrompt",str(self.prompt.value),to=self.roomId,include_self=True)
 

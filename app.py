@@ -38,11 +38,7 @@ caches: dict[str, GameCache] = {}
 
 
 app = flask.Flask(__name__)
-flask_cors.CORS(app,origins=[
-        "https://ku-obp.vercel.app",
-        "https://ku-obp-gamma.vercel.app",
-        "http://localhost:3000",
-    ],allow_headers=[
+flask_cors.CORS(app,origins="*",allow_headers=[
         "Content-Type",
         "Authorization",
         "Access-Control-Allow-Origin"
@@ -53,13 +49,7 @@ flask_cors.CORS(app,origins=[
 
 
 io = flask_socketio.SocketIO(app,
-    cors_allowed_origins=[
-        "https://ku-obp.vercel.app",
-        "https://ku-obp-gamma.vercel.app",
-        "http://localhost:3000",
-    ],
-    
-    
+    cors_allowed_origins="*"
 )
 
 main = flask.Blueprint('main', __name__)
