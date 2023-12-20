@@ -366,7 +366,7 @@ class GameCache:
             remainingJailTurns=0
         ),tmp[0:_metadata.size]))
         _properties: dict[int,PropertyType] = {}
-        return GameCache(roomId,_metadata,_player_states,_properties,PlayerIconType.first,0,0, DiceType.Null, 0,0, 0, 0, CellPromptType.none)
+        return GameCache(roomId,_metadata,_player_states,_properties,PlayerIconType.first,0,0, DiceType.Null, 0,0, 0, 0, CellPromptType.normal)
 
     @property
     def roomId(self) -> str: return self._roomId
