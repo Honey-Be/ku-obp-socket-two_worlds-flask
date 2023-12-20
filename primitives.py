@@ -204,11 +204,18 @@ class PlayerType:
         }
         
 
+
+
+
+
 @dataclass
 class PropertyType:
     def __init__(self, ownerIcon: PlayerIconType, count: int):
         self.ownerIcon: PlayerIconType = ownerIcon
         self.count: int = count
+
+
+
 @dataclass
 class GameStateType:
     def __init__(self, roomId: str, players: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doublesCount: int, remainingCatastropheTurns: int, remainingPandemicTurns: int):
@@ -222,6 +229,7 @@ class GameStateType:
         self.doublesCount: int = doublesCount
         self.remainingCatastropheTurns: int = remainingCatastropheTurns
         self.remainingPandemicTurns: int = remainingPandemicTurns
+    
 
 
 @dataclass

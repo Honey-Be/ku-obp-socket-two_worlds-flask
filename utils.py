@@ -26,6 +26,29 @@ import copy
 
 import json as JSON
 
+class PlayerSerializer:
+    def __init__(self, playerState: PlayerType):
+        self.icon: int = playerState.icon.value
+        self.location: int = playerState.location
+        self.displayLocation: int = playerState.displayLocation
+        self.cash: float = playerState.cash
+        self.cycles: int = playerState.cycles
+        self.university: str = copy.deepcopy(playerState.university.value)
+        self.ticketFeeExemption: int = playerState.tickets.feeExemption
+        self.ticketTaxExemption: int = playerState.tickets.taxExemption
+        self.ticketBonus: int = playerState.tickets.bonus
+        self.ticketDoubleLotto: int = playerState.tickets.doubleLotto
+        self.ticketLawyer: int = playerState.tickets.lawyer
+        self.ticketFreeHospital: int = playerState.tickets.freeHospital
+        self.remainingJailTurns: int = playerState.remainingJailTurns
+
+
+class PropertyItemSerializer:
+    def __init__(self, prop: PropertyType):
+        self.ownerIcon: int = prop.ownerIcon.value
+        self.count: int = prop.count
+
+
 SLICE_ALL = slice(None)
 
 from cells import *
@@ -461,24 +484,23 @@ class GameCache:
 
     def _emitUpdateGameStateGlobally(self, io: SocketIO):
         payload_updatePlayerStates = [
-            JSON.dumps(playerState.__dict__) for playerState in self.playerStates
+            JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
         ]
         io.emit("updatePlayerStates", payload_updatePlayerStates, to=self.roomId, include_self=True)
 
         cellIds = list(copy.deepcopy(self.properties.keys()))
-        payload_updateProperties = { f"cell{cellId}": JSON.dumps(property) for (cellId, property) in self.properties.items() }
+        payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
         io.emit("updateProperties", (cellIds, JSON.dumps(payload_updateProperties)), to=self.roomId, include_self=True)
-        
         io.emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), to=self.roomId, include_self=True)
 
     def _emitRefreshGameState(self):
         payload_updatePlayerStates = [
-            JSON.dumps(playerState.__dict__) for playerState in self.playerStates
+            JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
         ]
         emit("updatePlayerStates", payload_updatePlayerStates, broadcast=False)
 
         cellIds = list(copy.deepcopy(self.properties.keys()))
-        payload_updateProperties = { str(cellId): JSON.dumps(property.__dict__) for (cellId, property) in self.properties.items() }
+        payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
         emit("updateProperties", (cellIds, JSON.dumps(payload_updateProperties)), broadcast=False)
         emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
 
