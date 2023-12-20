@@ -517,7 +517,7 @@ class GameCache:
         charityIncome = state.charityIncome
         remainingCatastropheTurns = state.remainingCatastropheTurns
         remainingPandemicTurns = state.remainingPandemicTurns
-        emit("updateGameState",(JSON.dumps(playerStates.__dict__, default=lambda o: o.__dict__),JSON.dumps(properties.__dict__, default=lambda o: o.__dict__),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns), broadcast=False)       
+        emit("updateGameState",(JSON.dumps(playerStates),JSON.dumps(properties),nowInTurn,govIncome,charityIncome,remainingCatastropheTurns,remainingPandemicTurns), broadcast=False)       
         emit("updateDoublesCount",self.doublesCount,broadcast=False)
         emit("showDices",int(self.diceCache.value),broadcast=False)
         emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
