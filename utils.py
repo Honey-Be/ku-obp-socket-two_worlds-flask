@@ -476,16 +476,7 @@ class GameCache:
 
         cellIds = copy.deepcopy(list(self.properties.keys()))
         payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
-        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), self.nowInTurn.value, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns),to=self.roomId, include_self=True)
-
-    def _emitRefreshGameState(self):
-        payload_updatePlayerStates = [
-            JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
-        ]
-        cellIds = copy.deepcopy(list(self.properties.keys()))
-        payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
-        emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), self.nowInTurn.value, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
-
+        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns),to=self.roomId, include_self=True)
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
         if state is not None:
@@ -511,13 +502,10 @@ class GameCache:
                 return imported
             else: return None
             
-    def notifyRoomStatus(self, io: Optional[SocketIO]):
+    def notifyRoomStatus(self, io: SocketIO):
         playerEmails: list[str] = self.metadata.getPlayerEmailsList()
         isEnded: bool = self.metadata.isEnded
-        if io is not None:
-            io.emit("notifyRoomStatus", (playerEmails, JSON.dumps(isEnded)), to=self.roomId, include_self=True)
-        else:
-            emit("notifyRoomStatus", (playerEmails, JSON.dumps(isEnded)), broadcast=False)
+        io.emit("notifyRoomStatus", (playerEmails, JSON.dumps(isEnded)), to=self.roomId, include_self=True)
         
     def endGame(self, io: SocketIO):
         self.metadata.isEnded = True
@@ -527,14 +515,16 @@ class GameCache:
         self.notifyRoomStatus(io)
 
     def notifyLoad(self) -> None:
-        self.notifyRoomStatus(None)
-        state = self.gameState
-        print(f"\n\n\n{state}\n\n\n")
-        self._emitRefreshGameState()
-        emit("updateDoublesCount",self.doublesCount,broadcast=False)
-        emit("showDices",int(self.diceCache.value),broadcast=False)
-        emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
-        emit("updatePrompt",str(self.prompt.value),broadcast=False)
+        payload_updatePlayerStates = [
+            JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
+        ]
+        cellIds = copy.deepcopy(list(self.properties.keys()))
+        payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
+
+        playerEmails: list[str] = self.metadata.getPlayerEmailsList()
+        isEnded: bool = self.metadata.isEnded
+        
+        emit("refreshGameState", (playerEmails, JSON.dumps(isEnded), payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns, self.doublesCount, int(self.diceCache.value), self.chanceCardDisplay,str(self.prompt.value)), broadcast=False)
 
     def flushDices(self, io: SocketIO, new_doubles_count: int):
         self.diceCache = DiceType.Null
