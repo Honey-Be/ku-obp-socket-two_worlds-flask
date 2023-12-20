@@ -473,23 +473,18 @@ class GameCache:
         payload_updatePlayerStates = [
             JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
         ]
-        io.emit("updatePlayerStates", payload_updatePlayerStates, to=self.roomId, include_self=True)
 
         cellIds = copy.deepcopy(list(self.properties.keys()))
         payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
-        io.emit("updateProperties", (cellIds, JSON.dumps(payload_updateProperties)), to=self.roomId, include_self=True)
-        io.emit("updateOtherStates", (self.nowInTurn.value, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), to=self.roomId, include_self=True)
+        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), self.nowInTurn.value, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns),to=self.roomId, include_self=True)
 
     def _emitRefreshGameState(self):
         payload_updatePlayerStates = [
             JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
         ]
-        emit("updatePlayerStates", payload_updatePlayerStates, broadcast=False)
-
         cellIds = copy.deepcopy(list(self.properties.keys()))
         payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
-        emit("updateProperties", (cellIds, JSON.dumps(payload_updateProperties)), broadcast=False)
-        emit("updateOtherStates", (self.nowInTurn.value, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
+        emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), self.nowInTurn.value, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
 
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
