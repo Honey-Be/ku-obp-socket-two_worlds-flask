@@ -552,6 +552,7 @@ class GameCache:
         emit("updateDoublesCount",self.doublesCount,broadcast=False)
         emit("showDices",int(self.diceCache.value),broadcast=False)
         emit("updateChanceCardDisplay", self.chanceCardDisplay, broadcast=False)
+        emit("updatePrompt",str(self.prompt.value),broadcast=False)
 
     def flushDices(self, io: SocketIO, new_doubles_count: int):
         self.diceCache = DiceType.Null
