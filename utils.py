@@ -467,7 +467,7 @@ class GameCache:
 
         cellIds = list(copy.deepcopy(self.properties.keys()))
         payload_updateProperties = { f"cell{cellId}": JSON.dumps(property) for (cellId, property) in self.properties.items() }
-        io.emit("updateProperties", (cellIds, payload_updateProperties), to=self.roomId, include_self=True)
+        io.emit("updateProperties", (cellIds, JSON.dumps(payload_updateProperties)), to=self.roomId, include_self=True)
         
         io.emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), to=self.roomId, include_self=True)
 
@@ -477,9 +477,9 @@ class GameCache:
         ]
         emit("updatePlayerStates", payload_updatePlayerStates, broadcast=False)
 
-
+        cellIds = list(copy.deepcopy(self.properties.keys()))
         payload_updateProperties = { str(cellId): JSON.dumps(property.__dict__) for (cellId, property) in self.properties.items() }
-        emit("updateProperties", payload_updateProperties, broadcast=False)
+        emit("updateProperties", (cellIds, JSON.dumps(payload_updateProperties)), broadcast=False)
         emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
 
 
