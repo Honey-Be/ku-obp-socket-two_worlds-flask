@@ -329,7 +329,7 @@ def extinction(json):
     targetGroup = int(loaded["targetGroup"])
 
     groupCellIds = dict(filter(lambda cell: cell[1].group_factor == targetGroup,PREDEFINED_CELLS.items()))
-    searchResult = set(copy.deepcopy(groupCellIds.keys())).intersection(caches[roomId].properties.keys())
+    searchResult = copy.deepcopy(set(groupCellIds.keys())).intersection(caches[roomId].properties.keys())
 
     copied = copy.deepcopy(caches[roomId].properties)
 

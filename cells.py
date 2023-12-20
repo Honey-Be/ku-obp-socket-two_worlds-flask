@@ -663,4 +663,4 @@ PREDEFINED_CELLS = gen_cells()
 def getGroupCellIds(cellId: int) -> set[int]:
         group_factor = PREDEFINED_CELLS[cellId].group_factor
         filtered = dict(filter(lambda item: item[1].group_factor == group_factor,PREDEFINED_CELLS.items()))
-        return set(copy.deepcopy(filtered.keys()))
+        return copy.deepcopy(set(filtered.keys()))
