@@ -455,38 +455,31 @@ class GameCache:
 
 
     def updateGameState(self, io: SocketIO) -> None:
-        state: GameStateType = self.gameState
-        playerStates = state.playerStates
-        properties = list(map(lambda p: PropertySerialized(p[0],p[1].ownerIcon.value,p[1].count),state.properties.items())),
-        nowInTurn = state.nowInTurn
-        govIncome = state.govIncome
-        charityIncome = state.charityIncome
-        remainingCatastropheTurns = state.remainingCatastropheTurns
-        remainingPandemicTurns = state.remainingPandemicTurns
         self._emitUpdateGameStateGlobally(io)
         io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
         io.emit("updatePrompt",str(self.prompt.value),to=self.roomId,include_self=True)
 
     def _emitUpdateGameStateGlobally(self, io: SocketIO):
-        count = len(self.playerStates)
-        emit("refresh", count, broadcast=False)
-        for (index, playerState) in enumerate(self.playerStates):
-            io.emit("updatePlayerState", (index, JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__)), to=self.roomId, include_self=True)
+        payload_updatePlayerStates = [
+            JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__) for playerState in self.playerStates
+        ]
+        io.emit("updatePlayerStates", payload_updatePlayerStates, to=self.roomId, include_self=True)
+
+        cellIds = list(copy.deepcopy(self.properties.keys()))
+        payload_updateProperties = { f"cell{cellId}": JSON.dumps(property) for (cellId, property) in self.properties.items() }
+        io.emit("updateProperties", (cellIds, payload_updateProperties), to=self.roomId, include_self=True)
         
-        keys = list(self.properties.keys())
-        for (cellId, property) in self.properties.items():
-            io.emit("updateProperties", (JSON.dumps(keys), cellId, JSON.dumps(property.__dict__, default=lambda o: o.__dict__)), to=self.roomId, include_self=True)
         io.emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), to=self.roomId, include_self=True)
 
     def _emitRefreshGameState(self):
-        count = len(self.playerStates)
-        emit("refresh", count, broadcast=False)
-        for (index, playerState) in enumerate(self.playerStates):
-            emit("updatePlayerState", (index, JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__)), broadcast=False)
-        
-        keys = list(self.properties.keys())
-        for (cellId, property) in self.properties.items():
-            emit("updateProperties", (JSON.dumps(keys), cellId, JSON.dumps(property.__dict__, default=lambda o: o.__dict__)), broadcast=False)
+        payload_updatePlayerStates = [
+            JSON.dumps(playerState.__dict__, default=lambda o: o.__dict__) for playerState in self.playerStates
+        ]
+        emit("updatePlayerStates", payload_updatePlayerStates, broadcast=False)
+
+
+        payload_updateProperties = { str(cellId): JSON.dumps(property.__dict__, default=lambda o: o.__dict__) for (cellId, property) in self.properties.items() }
+        emit("updateProperties", payload_updateProperties, broadcast=False)
         emit("updateOtherStates", (self.nowInTurn, self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns), broadcast=False)
 
 
@@ -533,13 +526,6 @@ class GameCache:
         self.notifyRoomStatus(None)
         state = self.gameState
         print(f"\n\n\n{state}\n\n\n")
-        playerStates = state.playerStates
-        properties = list(map(lambda p: PropertySerialized(p[0],p[1].ownerIcon.value,p[1].count),state.properties.items())),
-        nowInTurn = state.nowInTurn
-        govIncome = state.govIncome
-        charityIncome = state.charityIncome
-        remainingCatastropheTurns = state.remainingCatastropheTurns
-        remainingPandemicTurns = state.remainingPandemicTurns
         self._emitRefreshGameState()
         emit("updateDoublesCount",self.doublesCount,broadcast=False)
         emit("showDices",int(self.diceCache.value),broadcast=False)
