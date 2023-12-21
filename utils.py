@@ -981,7 +981,10 @@ class GameCache:
             self.prompt = CellPromptType.none
             return True
         elif cell_type == CellType.industrial or cell_type == CellType.land:
-            if len(payment_choices) > 0:
+            got = self.properties.get(location)
+            if got is None:
+                self.prompt = CellPromptType.purchase
+            elif (got.ownerIcon == self.nowInTurn) and (got.count < PREDEFINED_CELLS[location].maxBuildable.value):
                 self.prompt = CellPromptType.purchase
             else:
                 self.prompt = CellPromptType.none
@@ -991,6 +994,7 @@ class GameCache:
                 self.prompt = CellPromptType.tryLotto
             else:
                 self.prompt = CellPromptType.none
+                return True
         return False
 
 

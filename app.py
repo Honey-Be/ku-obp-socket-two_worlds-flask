@@ -163,6 +163,8 @@ def reportNormalTurnDice(json):
     finished = caches[roomId].go((dice1+dice2),io)
     if finished:
         _nextTurn(roomId)
+    else:
+        caches[roomId].commitGameState(None,io)
 
 def lotto(judge: Callable[[Eisenstein], bool]) -> bool:
     a = round(random.gammavariate(3,2))
@@ -231,30 +233,28 @@ def purchase(json):
     elif cellId in caches[roomId].properties.keys():
         before_count = caches[roomId].properties[cellId].count
         before_cash = caches[roomId].playerStates[nowInTurn.value].cash
-        available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles, maxBuildable.value - before_count)
+        available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles+1, maxBuildable.value - before_count, 3)
         if (available_amount > 0) and (before_cash >= (300000 * available_amount)):
-            (
-                caches[roomId].properties[cellId].count,
-                caches[roomId].playerStates[nowInTurn.value].cash
-            ) = (
+            tmp = (
                 before_count + available_amount,
                 before_cash - (300000 * available_amount)
             )
-        else:
-            pass
-    else:
-        before_cash = caches[roomId].playerStates[nowInTurn.value].cash
-        available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles, maxBuildable.value)
-        if (available_amount > 0) and (before_cash >= (300000 * available_amount)):
             (
                 caches[roomId].properties[cellId].count,
                 caches[roomId].playerStates[nowInTurn.value].cash
-            ) = (
+            ) = tmp
+    else:
+        before_cash = caches[roomId].playerStates[nowInTurn.value].cash
+        available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles+1, maxBuildable.value, 3)
+        if (available_amount > 0) and (before_cash >= (300000 * available_amount)):
+            tmp = (
                 available_amount,
                 before_cash - (300000 * available_amount)
             )
-        else:
-            pass
+            (
+                caches[roomId].properties[cellId].count,
+                caches[roomId].playerStates[nowInTurn.value].cash
+            ) = tmp
     
     _nextTurn(roomId)
 
@@ -302,12 +302,13 @@ def trafficJam(json):
     roomId = str(loaded["roomId"])
     target = int(loaded["target"]) % 54
 
-    if target in caches[roomId].properties.keys() and (PREDEFINED_CELLS[target].maxBuildable != BuildableFlagType.NotBuildable) and caches[roomId].properties[target].ownerIcon != caches[roomId].nowInTurn:
-        before = caches[roomId].properties[target].count
-        caches[roomId].properties[target].count = max(0,before - 1)
-        caches[roomId]._garbageCollection()
-        
-        _nextTurn(roomId)
+    if target in caches[roomId].properties.keys():
+        if (PREDEFINED_CELLS[target].maxBuildable != BuildableFlagType.NotBuildable) and caches[roomId].properties[target].ownerIcon != caches[roomId].nowInTurn:
+            before = caches[roomId].properties[target].count
+            caches[roomId].properties[target].count = max(0,before - 1)
+            caches[roomId]._garbageCollection()
+            
+            _nextTurn(roomId)
 
 
 def trade(json):
@@ -351,17 +352,17 @@ def extinction(json):
 def quickMove(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    dest = int(loaded["dest"])
+    dest = int(loaded["dest"]) % 54
 
     nowInTurn = caches[roomId].nowInTurn
-    if dest in PREDEFINED_CELLS.keys():
-        if dest == caches[roomId].playerStates[nowInTurn.value].location:
-            amount = 54
-        else:
-            amount = dest - caches[roomId].playerStates[nowInTurn.value].location
-        turn_finished = caches[roomId].go(amount, io)
-        if turn_finished:
-            _nextTurn(roomId)
+
+    if dest == caches[roomId].playerStates[nowInTurn.value].location:
+        amount = 54
+    else:
+        amount = dest - caches[roomId].playerStates[nowInTurn.value].location
+    turn_finished = caches[roomId].go(amount, io)
+    if turn_finished:
+        _nextTurn(roomId)
 
 
 def greenNewDeal(json):
@@ -374,8 +375,8 @@ def greenNewDeal(json):
     if target in caches[roomId].properties.keys():
         before = caches[roomId].properties[target].count
         maximum = PREDEFINED_CELLS[target].maxBuildable.value
-        if (caches[roomId].properties[target].ownerIcon == nowInTurn) and (before < PREDEFINED_CELLS[target].maxBuildable.value):
-            caches[roomId].properties[target].count = min(before + 1, maximum)
+        if (caches[roomId].properties[target].ownerIcon == nowInTurn) and (before < maximum):
+            caches[roomId].properties[target].count = before + 1
             _nextTurn(roomId)
             
 
@@ -383,24 +384,52 @@ def quirkOfFate(json):
     loaded = json
     roomId = str(loaded["roomId"])
 
-    (dice1, dice2) = randomDice()
-    caches[roomId].qofDiceCache = DICE_REVERSE_LOOKUP[(dice1, dice2)]
-    caches[roomId].commitGameState(None,io)
 
     l = len(caches[roomId].playerStates)
 
-    nowInTurn = caches[roomId].nowInTurn
-
-    if l == 2:
-        target = (caches[roomId].nowInTurn.value + dice1 + dice2) % 2
-    elif l == 3:
-        target = (caches[roomId].nowInTurn.value + dice1 + dice2) % 3
-    elif l == 4:
-        target = (caches[roomId].nowInTurn.value + dice1 + dice2) % 4
-    else:
+    if l < 2 or l > 4:
         return
     
-    if target != nowInTurn.value:
+
+    nowInTurn = caches[roomId].nowInTurn
+
+    while(l == 3 or l == 4):
+        (dice1, dice2) = randomDice()
+        caches[roomId].qofDiceCache = DICE_REVERSE_LOOKUP[(dice1, dice2)]
+        caches[roomId].commitGameState(None,io)
+
+
+        if l == 3:
+            _tmp = (nowInTurn.value + dice1 + dice2) % 3
+            target = 2 if _tmp == 2 else 1 if _tmp == 1 else 0
+        else:
+            _tmp = (nowInTurn.value + dice1 + dice2) % 4
+            target = 3 if _tmp == 3 else 2 if _tmp == 2 else 1 if _tmp == 1 else 0
+        
+        if target == nowInTurn.value:
+            continue
+        else:
+            copied = copy.deepcopy(caches[roomId].properties)
+            myPropertyIds = set(map(lambda p: p[0],filter(lambda p: p[1].ownerIcon.value == nowInTurn.value,copied.items())))
+            targetsPropertyIds = set(map(lambda p: p[0],filter(lambda p: p[1].ownerIcon.value == target,copied.items())))
+            targetIcon = getIcon(target)
+            for myPropertyId in myPropertyIds:
+                caches[roomId].properties[myPropertyId].ownerIcon = targetIcon
+            
+            for targetsPropertyId in targetsPropertyIds:
+                caches[roomId].properties[targetsPropertyId].ownerIcon = nowInTurn
+
+            (
+                caches[roomId].playerStates[nowInTurn.value].cash,
+                caches[roomId].playerStates[target].cash
+            ) = (
+                caches[roomId].playerStates[target].cash,
+                caches[roomId].playerStates[nowInTurn.value].cash
+            )
+            break
+            
+    if l == 2:
+        target = 0 if nowInTurn.value != 0 else 1
         copied = copy.deepcopy(caches[roomId].properties)
         myPropertyIds = set(map(lambda p: p[0],filter(lambda p: p[1].ownerIcon.value == nowInTurn.value,copied.items())))
         targetsPropertyIds = set(map(lambda p: p[0],filter(lambda p: p[1].ownerIcon.value == target,copied.items())))
@@ -419,7 +448,10 @@ def quirkOfFate(json):
             caches[roomId].playerStates[nowInTurn.value].cash
         )
 
-        _nextTurn(roomId)
+
+    _nextTurn(roomId)
+
+    
 
 
     
@@ -430,6 +462,8 @@ def pickChance(json):
     caches[roomId].prompt = CellPromptType.none
     caches[roomId].commitGameState(None,io)
     caches[roomId].getChance(io)
+    caches[roomId].commitGameState(None,io)
+        
 
 
 
