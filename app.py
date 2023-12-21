@@ -247,14 +247,12 @@ def purchase(json):
         before_cash = caches[roomId].playerStates[nowInTurn.value].cash
         available_amount = min(amount, caches[roomId].playerStates[nowInTurn.value].cycles+1, maxBuildable.value, 3)
         if (available_amount > 0) and (before_cash >= (300000 * available_amount)):
-            tmp = (
+            (count, after_cash) = (
                 available_amount,
                 before_cash - (300000 * available_amount)
             )
-            (
-                caches[roomId].properties[cellId].count,
-                caches[roomId].playerStates[nowInTurn.value].cash
-            ) = tmp
+            caches[roomId].properties[cellId] = PropertyType(nowInTurn,count)
+            caches[roomId].playerStates[nowInTurn.value].cash = after_cash
     
     _nextTurn(roomId)
 
