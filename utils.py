@@ -673,9 +673,9 @@ class GameCache:
         self.distributeBasicIncome()
         
     def transport(self):
-        src = (self.playerStates[self.nowInTurn.value].location) % 54
+        src = self.playerStates[self.nowInTurn.value].location
         if PREDEFINED_CELLS[src].cell_type == CellType.transportation:
-            self.playerStates[self.nowInTurn.value].location = TRANSPORTATIONS[src].dest
+            self.playerStates[self.nowInTurn.value].location = (src + 9) % 54
 
     def _chance_newborn(self): # 출산 ㅊㅋㅊㅋ : 시장으로부터 100만 받음
         after = self.playerStates[self.nowInTurn.value].cash + 1000000

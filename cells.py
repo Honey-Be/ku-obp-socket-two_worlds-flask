@@ -274,7 +274,7 @@ class Chance(AbstractCellData):
         return (state, [])
     
 
-class Trnsportation(AbstractCellData):
+class Transportation(AbstractCellData):
     def __new__(cls, *args, **kwds):
         this: Self = super().__new__(cls)
         return this
@@ -588,8 +588,8 @@ INDUSTRIALS_LOOKUP: dict[str, CellNameLookupItemType] = {
         }
     
     
-_TRANSPORTATIONS: list[Trnsportation] = list(map(lambda n: Trnsportation((n * 9 + 1), (((n+1)%6) * 9 + 1)),range(0,6)))
-TRANSPORTATIONS: dict[int, Trnsportation] = {
+_TRANSPORTATIONS: list[Transportation] = list(map(lambda n: Transportation((n * 9 + 1), (((n+1)%6) * 9 + 1)),range(0,6)))
+TRANSPORTATIONS: dict[int, Transportation] = {
     transportation.cellId: transportation for transportation in _TRANSPORTATIONS
 }
 
