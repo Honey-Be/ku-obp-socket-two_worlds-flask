@@ -473,19 +473,14 @@ class GameCache:
     def chanceCardDisplay(self, value: str): self._chanceCardDisplay = value
 
 
-    def updateGameState(self, io: SocketIO) -> None:
-        self._emitUpdateGameStateGlobally(io)
-        io.emit("updateChanceCardDisplay", self.chanceCardDisplay, to=self.roomId,include_self=True)
-        io.emit("updatePrompt",str(self.prompt.value),to=self.roomId,include_self=True)
-
-    def _emitUpdateGameStateGlobally(self, io: SocketIO):
+    def updateGameState(self, io: SocketIO):
         payload_updatePlayerStates = [
             JSON.dumps(PlayerSerializer(playerState).__dict__) for playerState in self.playerStates
         ]
 
         cellIds = copy.deepcopy(list(self.properties.keys()))
         payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
-        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns, int(self.qofDiceCache.value)),to=self.roomId, include_self=True)
+        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns, self.doublesCount, int(self.diceCache.value), self.chanceCardDisplay,str(self.prompt.value), int(self.qofDiceCache.value)),to=self.roomId, include_self=True)
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
         if state is not None:
@@ -497,6 +492,7 @@ class GameCache:
             self.diceCache = state.diceCache
             self.doublesCount = state.doublesCount
         
+        sleep(0.6)
         self.updateGameState(io)
         
         with Client("room.sqlite") as db:
@@ -538,11 +534,10 @@ class GameCache:
     def flushDices(self, io: SocketIO, new_doubles_count: int):
         self.diceCache = DiceType.Null
         self.doublesCount = new_doubles_count
-        io.emit("flushDices",to=self.roomId, include_self=True)
 
     def reportDices(self, dice1: Literal[1,2,3,4,5,6], dice2: Literal[1,2,3,4,5,6], io: SocketIO):
         self.diceCache = DICE_REVERSE_LOOKUP[(dice1, dice2)]
-        io.emit("showDices", int(self.diceCache.value), to=self.roomId)
+        self.commitGameState(None,io)
         
     def _garbageCollection(self):
         cellIds = copy.deepcopy(self.properties.keys())
@@ -1008,27 +1003,22 @@ class GameCache:
                 new_cycles = self.playerStates[self.nowInTurn.value].cycles + 1
                 self.playerStates[self.nowInTurn.value].cycles = new_cycles
             self.commitGameState(None, io)
-            sleep(0.6)
         self.playerStates[self.nowInTurn.value].location = dest
         self.commitGameState(None, io)
-        sleep(0.6)
         
         state_arrival = copy.deepcopy(self.gameState)
         (state_after, payment_choices) = PREDEFINED_CELLS[dest].arrived(state_arrival,self.nowInTurn)
         if (dest in CATASTROPHE_TARGETS and self.remainingCatastropheTurns > 0) or self.remainingPandemicTurns > 0:
             turn_finished = self.checkActions(io, payment_choices)
-            self.commitGameState(None, io)
         else:
             self.commitGameState(state_after, io)
             if self.playerStates[self.nowInTurn.value].cash >= 0:
                 turn_finished = self.checkActions(io, payment_choices)
-                self.commitGameState(None, io)
             else:
                 self.prompt = CellPromptType.sell
                 self._paymentChoicesCache = copy.deepcopy(payment_choices)
-                self.commitGameState(None, io)
                 turn_finished = False
-        sleep(0.6)
+        self.commitGameState(None, io)
         return turn_finished
 
     def goBack(self, amount: int, io: SocketIO) -> bool:
@@ -1038,25 +1028,21 @@ class GameCache:
             new_displayLocation = (src - n) % 54
             self.playerStates[self.nowInTurn.value].displayLocation = new_displayLocation
             self.commitGameState(None, io)
-            sleep(0.6)
         self.playerStates[self.nowInTurn.value].location = dest
         self.commitGameState(None, io)
         state_arrival = copy.deepcopy(self.gameState)
         (state_after, payment_choices) = PREDEFINED_CELLS[dest].arrived(state_arrival,self.nowInTurn)
         if (dest in CATASTROPHE_TARGETS and self.remainingCatastropheTurns > 0) or self.remainingPandemicTurns > 0:
             turn_finished = self.checkActions(io, payment_choices)
-            self.commitGameState(None, io)
         else:
             self.commitGameState(state_after, io)
             if self.playerStates[self.nowInTurn.value].cash >= 0:
                 turn_finished = self.checkActions(io, payment_choices)
-                self.commitGameState(None, io)
             else:
                 self.prompt = CellPromptType.sell
                 self._paymentChoicesCache = copy.deepcopy(payment_choices)
-                self.commitGameState(None, io)
                 turn_finished = False
-        sleep(0.6)
+        self.commitGameState(None, io)
         return turn_finished
 
     def warp(self, dest: int, io: SocketIO, do_arrival_action: bool = False):
@@ -1067,23 +1053,18 @@ class GameCache:
             (state_after, payment_choices) = PREDEFINED_CELLS[dest].arrived(state_arrival,self.nowInTurn)
             if (dest in CATASTROPHE_TARGETS and self.remainingCatastropheTurns > 0) or self.remainingPandemicTurns > 0:
                 turn_finished = self.checkActions(io, payment_choices)
-                self.commitGameState(None, io)
             else:
                 self.commitGameState(state_after, io)
                 if self.playerStates[self.nowInTurn.value].cash >= 0:
                     turn_finished = self.checkActions(io, payment_choices)
-                    self.commitGameState(None, io)
                 else:
                     self.prompt = CellPromptType.sell
                     self._paymentChoicesCache = copy.deepcopy(payment_choices)
-                    self.commitGameState(None, io)
                     turn_finished = False
-            sleep(0.6)
-            return turn_finished
         else:
-            self.commitGameState(None, io)
-            sleep(0.6)
-            return False
+            turn_finished = False
+        self.commitGameState(None, io)
+        return turn_finished
 
 
     def sellForDebt(self, target_location: int, amount: int, io: SocketIO):
@@ -1104,7 +1085,7 @@ class GameCache:
         if self._duringMaintenance:
             calculated: Optional[int] = self._calculatePropertiesMaintenanceCost(lambda item: item[1].ownerIcon == self.nowInTurn)
             if calculated is None:
-                pass
+                return
             else:
                 after = self.playerStates[self.nowInTurn.value].cash - calculated
                 self.playerStates[self.nowInTurn.value].cash = after
@@ -1114,7 +1095,7 @@ class GameCache:
                 payment_choices = copy.deepcopy(self._paymentChoicesCache)
                 self._paymentChoicesCache = []
                 self.checkActions(io, payment_choices)
-            self.commitGameState(None, io)
+                self.commitGameState(None, io)
             self._usePaymentChoicesCache = False
             self.prompt = CellPromptType.none
         else:
@@ -1125,7 +1106,7 @@ class GameCache:
                 self.charityIncome = 0
                 if helpsWithCharity < 0:
                     self.distributeBasicIncome()
-                
+        self.commitGameState(None, io)
     
 
 

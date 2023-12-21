@@ -154,11 +154,11 @@ def sellForDebt(json):
 def _nextTurn(roomId: str, jailbreak: bool = False):
     caches[roomId].prompt = CellPromptType.none
     caches[roomId].chanceCardDisplay = ""
-    sleep(0.6)
+    caches[roomId].commitGameState(None,io)
     isdouble = caches[roomId].isDouble() and not jailbreak
     triggerEndGame = caches[roomId].tryNextTurn(isdouble, io)
+    caches[roomId].qofDiceCache = DiceType.Null
     caches[roomId].commitGameState(None,io)
-    io.emit("eraseQuirkOfFateStatus",to=roomId,include_self=True)
     if triggerEndGame:
         caches[roomId].endGame(io)
 
@@ -383,7 +383,7 @@ def quirkOfFate(json):
 
     (dice1, dice2) = randomDice()
     caches[roomId].qofDiceCache = DICE_REVERSE_LOOKUP[(dice1, dice2)]
-    caches[roomId].updateGameState(io)
+    caches[roomId].commitGameState(None,io)
 
     l = len(caches[roomId].playerStates)
 
