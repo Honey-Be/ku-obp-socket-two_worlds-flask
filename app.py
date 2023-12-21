@@ -136,8 +136,8 @@ def randomDice() -> tuple[Literal[1,2,3,4,5,6], Literal[1,2,3,4,5,6]]:
 def sellForDebt(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    targetLocation = int(loaded["targetLocation"])
-    amount = int(loaded["amount"])
+    targetLocation = int(str(loaded["targetLocation"]))
+    amount = int(str(loaded["amount"]))
     
     cache = caches[roomId]
     cache.sellForDebt(targetLocation,amount,io)
@@ -224,7 +224,7 @@ def tryLotto(json):
 def purchase(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    amount = min(3,max(1,int(loaded["amount"])))
+    amount = min(3,max(1,int(str(loaded["amount"]))))
     nowInTurn = caches[roomId].nowInTurn
     cellId = (caches[roomId].playerStates[nowInTurn.value].location) % 54
     maxBuildable = PREDEFINED_CELLS[cellId].maxBuildable
@@ -300,7 +300,7 @@ def jailExitByCash(json):
 def trafficJam(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    target = int(loaded["target"]) % 54
+    target = int(str(loaded["target"])) % 54
 
     if target in caches[roomId].properties.keys():
         if (PREDEFINED_CELLS[target].maxBuildable != BuildableFlagType.NotBuildable) and caches[roomId].properties[target].ownerIcon != caches[roomId].nowInTurn:
@@ -314,8 +314,8 @@ def trafficJam(json):
 def trade(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    toGive = int(loaded["toGive"]) % 54
-    toGet = int(loaded["toGet"]) % 54
+    toGive = int(str(loaded["toGive"])) % 54
+    toGet = int(str(loaded["toGet"])) % 54
 
     nowInTurn = caches[roomId].nowInTurn
 
@@ -331,7 +331,7 @@ def trade(json):
 def extinction(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    targetGroup = int(loaded["targetGroup"])
+    targetGroup = int(str(loaded["targetGroup"]))
 
     groupCellIds = dict(filter(lambda cell: cell[1].group_factor == targetGroup,PREDEFINED_CELLS.items()))
     searchResult = copy.deepcopy(set(groupCellIds.keys())).intersection(caches[roomId].properties.keys())
@@ -352,7 +352,7 @@ def extinction(json):
 def quickMove(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    dest = int(loaded["dest"]) % 54
+    dest = int(str(loaded["dest"])) % 54
 
     nowInTurn = caches[roomId].nowInTurn
 
@@ -368,7 +368,7 @@ def quickMove(json):
 def greenNewDeal(json):
     loaded = json
     roomId = str(loaded["roomId"])
-    target = int(loaded["target"])
+    target = int(str(loaded["target"]))
 
     nowInTurn = caches[roomId].nowInTurn
 
