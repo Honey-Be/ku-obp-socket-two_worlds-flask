@@ -316,11 +316,11 @@ class PaymentTransaction:
         return PaymentTransaction(players[0],players[1], players[2], players[3], government,charity)
     
     def toAppliedPlayer(self, player_status: PlayerType) -> PlayerType:
-        if player_status.icon == 0:
+        if player_status.icon.value == 0:
             selected = self.first
-        elif player_status.icon == 1:
+        elif player_status.icon.value == 1:
             selected = self.second
-        elif player_status.icon == 2:
+        elif player_status.icon.value == 2:
             selected = self.third
         else:
             selected = self.fourth
