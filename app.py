@@ -461,6 +461,8 @@ def pickChance(json):
     caches[roomId].commitGameState(None,io)
     caches[roomId].getChance(io)
     caches[roomId].commitGameState(None,io)
+    if caches[roomId].prompt == CellPromptType.none:
+        _nextTurn(roomId)
         
 
 

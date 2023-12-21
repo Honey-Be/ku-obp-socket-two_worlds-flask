@@ -553,6 +553,8 @@ class GameCache:
         
     def _calculatePropertiesMaintenanceCost(self, f: Callable[[tuple[int, PropertyType]], bool]) -> Optional[int]:
         filtered = list(filter(f,self.properties.items()))
+        if len(filtered) == 0:
+            return 0
         result = reduce(lambda acc, _: acc + 1,filtered,0)
         if self.playerStates[self.nowInTurn.value].cash >= (100000 * result):
             return (result * 100000)
@@ -728,6 +730,9 @@ class GameCache:
         calculated: Optional[int] = self._calculatePropertiesMaintenanceCost(lambda item: item[1].ownerIcon == self.nowInTurn)
         if calculated is None:
             self._trigger_sell(io,False,True)
+        elif calculated != 0:
+            before = self.playerStates[self.nowInTurn.value].cash
+            self.playerStates[self.nowInTurn.value].cash = before - calculated
         return True
 
     def _chance_healthy(self, io: SocketIO): # 건강한 식습관 (병원비 1회 무료) [티켓]
@@ -889,6 +894,7 @@ class GameCache:
         src = (self.playerStates[self.nowInTurn.value].location) % 54
 
         if PREDEFINED_CELLS[src].cell_type == CellType.chance:
+            self.prompt = CellPromptType.none
             while True:
                 picked = choice(list(CHANCE_CARDS))
                 self.chanceCardDisplay = copy.deepcopy(picked)
@@ -966,6 +972,7 @@ class GameCache:
                     result = False
                 if result:
                     break
+
                 
     def checkActions(self, io: SocketIO, payment_choices: Sequence[AbstractPaymentType]) -> bool:
         location = self.playerStates[self.nowInTurn.value].location
