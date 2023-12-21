@@ -318,7 +318,7 @@ class CellPromptType(Enum):
     normal = "normal"
 
 class GameCache:
-    def __init__(self, roomId: str, metadata: PlayerMetadataSet, player_states: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doubles_count: int, remainingCatastropheTurns: int, remainingPandemicTurns: int, lottoSuccess: int, prompt: CellPromptType, usingDoubleLotto: bool = False, paymentChoicesCache: Sequence[AbstractPaymentType] = [], usePaymentChoicesCache: bool = False, duringMaintenance: bool = False, chanceCardDisplay: str = ""):
+    def __init__(self, roomId: str, metadata: PlayerMetadataSet, player_states: list[PlayerType], properties: dict[int,PropertyType], nowInTurn: PlayerIconType, govIncome: int, charityIncome: int, diceCache: DiceType, doubles_count: int, remainingCatastropheTurns: int, remainingPandemicTurns: int, lottoSuccess: int, prompt: CellPromptType, usingDoubleLotto: bool = False, paymentChoicesCache: Sequence[AbstractPaymentType] = [], usePaymentChoicesCache: bool = False, duringMaintenance: bool = False, chanceCardDisplay: str = "", qofDiceCache: DiceType = DiceType.Null):
         self._roomId: str = copy.deepcopy(roomId)
         self._metadata: PlayerMetadataSet = copy.deepcopy(metadata)
         self._player_states: list[PlayerType] = copy.deepcopy(player_states)
@@ -337,6 +337,7 @@ class GameCache:
         self._usePaymentChoicesCache: bool = usePaymentChoicesCache
         self._duringMaintenance: bool = duringMaintenance
         self._chanceCardDisplay: str = copy.deepcopy(chanceCardDisplay)
+        self._qofDiceCache: DiceType = qofDiceCache
 
     @classmethod
     def initialize(cls, roomId: str, hostEmail: str, first_guestEmail: str, max_guests: Literal[1,2,3] = 3, shuffles: bool = False, *other_guestEmails: str):
@@ -443,6 +444,14 @@ class GameCache:
     def usingDoubleLotto(self, value: bool): self._usingDoubleLotto = value
 
     @property
+    def qofDiceCache(self) -> DiceType:
+        return self._qofDiceCache
+    
+    @qofDiceCache.setter
+    def qofDiceCache(self, value: DiceType):
+        self._qofDiceCache = value
+
+    @property
     def gameState(self) -> GameStateType:
         output = GameStateType(
             roomId=copy.deepcopy(self._roomId),
@@ -476,7 +485,7 @@ class GameCache:
 
         cellIds = copy.deepcopy(list(self.properties.keys()))
         payload_updateProperties = { f"cell{cellId}": JSON.dumps(PropertyItemSerializer(propertyItem).__dict__) for (cellId, propertyItem) in self.properties.items() }
-        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns),to=self.roomId, include_self=True)
+        io.emit("updateGameState", (payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns, self.qofDiceCache),to=self.roomId, include_self=True)
 
     def commitGameState(self, state: Optional[GameStateType], io: SocketIO):
         if state is not None:
@@ -524,7 +533,7 @@ class GameCache:
         playerEmails: list[str] = self.metadata.getPlayerEmailsList()
         isEnded: bool = self.metadata.isEnded
         
-        emit("refreshGameState", (playerEmails, JSON.dumps(isEnded), payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns, self.doublesCount, int(self.diceCache.value), self.chanceCardDisplay,str(self.prompt.value)), broadcast=False)
+        emit("refreshGameState", (playerEmails, JSON.dumps(isEnded), payload_updatePlayerStates, cellIds, JSON.dumps(payload_updateProperties), int(self.nowInTurn.value), self.govIncome, self.charityIncome, self.remainingCatastropheTurns, self.remainingPandemicTurns, self.doublesCount, int(self.diceCache.value), self.chanceCardDisplay,str(self.prompt.value), self.qofDiceCache.value), broadcast=False)
 
     def flushDices(self, io: SocketIO, new_doubles_count: int):
         self.diceCache = DiceType.Null

@@ -382,7 +382,8 @@ def quirkOfFate(json):
     roomId = str(loaded["roomId"])
 
     (dice1, dice2) = randomDice()
-    io.emit("showQuirkOfFateStatus", (int(dice1), int(dice2)))
+    caches[roomId].qofDiceCache = DICE_REVERSE_LOOKUP[(dice1, dice2)]
+    caches[roomId].updateGameState(io)
 
     l = len(caches[roomId].playerStates)
 
