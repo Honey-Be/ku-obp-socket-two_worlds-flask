@@ -565,6 +565,7 @@ class GameCache:
         inJail = (PREDEFINED_CELLS[location].cell_type == CellType.jail)
         if doubles and not inJail:
             self.flushDices(io,self.doublesCount + 1)
+            self.prompt = CellPromptType.normal
             return False
         else:
             self.flushDices(io, 0)
