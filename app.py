@@ -128,16 +128,7 @@ def randomDice() -> tuple[Literal[1,2,3,4,5,6], Literal[1,2,3,4,5,6]]:
     
 
 
-def reportNormalTurnDIce(json):
-    loaded = json
-    roomId = str(loaded["roomId"])
-    
-    (dice1, dice2) = randomDice()
-    
-    caches[roomId].reportDices(dice1, dice2, io)
-    finished = caches[roomId].go((dice1+dice2),io)
-    if finished:
-        _nextTurn(roomId)
+
 
 
 
@@ -161,6 +152,17 @@ def _nextTurn(roomId: str, jailbreak: bool = False):
     caches[roomId].commitGameState(None,io)
     if triggerEndGame:
         caches[roomId].endGame(io)
+
+def reportNormalTurnDice(json):
+    loaded = json
+    roomId = str(loaded["roomId"])
+    
+    (dice1, dice2) = randomDice()
+    
+    caches[roomId].reportDices(dice1, dice2, io)
+    finished = caches[roomId].go((dice1+dice2),io)
+    if finished:
+        _nextTurn(roomId)
 
 def lotto(judge: Callable[[Eisenstein], bool]) -> bool:
     a = round(random.gammavariate(3,2))
@@ -436,7 +438,7 @@ def pickChance(json):
 
 @io.event
 def connect():
-    io.on_event("reportNormalTurnDice", reportNormalTurnDIce)    
+    io.on_event("reportNormalTurnDice", reportNormalTurnDice)    
     io.on_event("purchase", purchase)
     io.on_event("sellForDebt", sellForDebt)
 

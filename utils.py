@@ -972,21 +972,25 @@ class GameCache:
         cell_type = PREDEFINED_CELLS[location].cell_type
 
         if cell_type == CellType.transportation:
+            self.prompt = CellPromptType.none
             self.transport()
             return True
         elif cell_type == CellType.chance:
             self.prompt = CellPromptType.pickChance
         elif cell_type == CellType.charity or cell_type == CellType.concert or cell_type == CellType.jail or cell_type == CellType.infrastructure or cell_type == CellType.hospital:
+            self.prompt = CellPromptType.none
             return True
         elif cell_type == CellType.industrial or cell_type == CellType.land:
             if len(payment_choices) > 0:
                 self.prompt = CellPromptType.purchase
             else:
+                self.prompt = CellPromptType.none
                 return True
         elif cell_type == CellType.lotto:
             if self.lottoSuccess < 3:
                 self.prompt = CellPromptType.tryLotto
-        
+            else:
+                self.prompt = CellPromptType.none
         return False
 
 
